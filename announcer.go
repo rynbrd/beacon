@@ -70,16 +70,16 @@ func (ann *ServiceAnnouncer) addService(svc *Service) (err error) {
 			return
 		}
 	}
-	if err = ann.setValue(svc, root, "container_name", svc.ContainerName); err != nil {
+	if err = ann.setValue(svc, root, "container-name", svc.ContainerName); err != nil {
 		return
 	}
-	if err = ann.setValue(svc, root, "container_port", fmt.Sprintf("%d", svc.ContainerPort)); err != nil {
+	if err = ann.setValue(svc, root, "container-port", fmt.Sprintf("%d", svc.ContainerPort)); err != nil {
 		return
 	}
-	if err = ann.setValue(svc, root, "host_name", svc.HostName); err != nil {
+	if err = ann.setValue(svc, root, "host-name", svc.HostName); err != nil {
 		return
 	}
-	if err = ann.setValue(svc, root, "host_port", fmt.Sprintf("%d", svc.HostPort)); err != nil {
+	if err = ann.setValue(svc, root, "host-port", fmt.Sprintf("%d", svc.HostPort)); err != nil {
 		return
 	}
 	if err = ann.setValue(svc, root, "protocol", svc.Protocol); err != nil {
