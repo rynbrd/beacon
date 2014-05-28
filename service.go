@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/samalba/dockerclient"
-	//"dockerclient"
 	"strings"
 )
 

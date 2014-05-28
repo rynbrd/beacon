@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"github.com/samalba/dockerclient"
-	//"dockerclient"
 	"strings"
 	"time"
 )
