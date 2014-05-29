@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/BlueDragonX/simplelog"
+	"gopkg.in/BlueDragonX/simplelog.v1"
 	"os"
 	"os/signal"
 	"strings"
