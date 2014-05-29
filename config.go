@@ -3,9 +3,9 @@ package main
 import (
 	"errors"
 	"flag"
-	h "github.com/BlueDragonX/yamlcfg"
-	"io/ioutil"
+	"github.com/BlueDragonX/yamlcfg"
 	"gopkg.in/yaml.v1"
+	"io/ioutil"
 	"os"
 	"time"
 )
@@ -56,9 +56,9 @@ func DefaultLoggingConfig() LoggingConfig {
 
 // SetYAML parses the YAML tree into the object.
 func (cfg *LoggingConfig) SetYAML(tag string, data interface{}) bool {
-	h.AssertIsMap("logging", data)
-	cfg.Syslog = h.GetBool(data, "syslog", DefaultLoggingSyslog)
-	cfg.Console = h.GetBool(data, "console", DefaultLoggingConsole)
+	yamlcfg.AssertIsMap("logging", data)
+	cfg.Syslog = yamlcfg.GetBool(data, "syslog", DefaultLoggingSyslog)
+	cfg.Console = yamlcfg.GetBool(data, "console", DefaultLoggingConsole)
 	return true
 }
 
@@ -80,10 +80,10 @@ func DefaultDockerConfig() DockerConfig {
 
 // SetYAML parses the YAML tree into the object.
 func (cfg *DockerConfig) SetYAML(tag string, data interface{}) bool {
-	h.AssertIsMap("docker", data)
-	cfg.URL = h.GetString(data, "url", DefaultDockerURL)
-	cfg.Var = h.GetString(data, "var", DefaultDockerVar)
-	cfg.Hostname = getHostname(h.GetString(data, "hostname", ""))
+	yamlcfg.AssertIsMap("docker", data)
+	cfg.URL = yamlcfg.GetString(data, "url", DefaultDockerURL)
+	cfg.Var = yamlcfg.GetString(data, "var", DefaultDockerVar)
+	cfg.Hostname = getHostname(yamlcfg.GetString(data, "hostname", ""))
 	return true
 }
 
@@ -113,14 +113,14 @@ func DefaultEtcdConfig() EtcdConfig {
 
 // SetYAML parses the YAML tree into the object.
 func (cfg *EtcdConfig) SetYAML(tag string, data interface{}) bool {
-	h.AssertIsMap("etcd", data)
-	cfg.URLs = h.GetStringArray(data, "urls", []string{DefaultEtcdURL})
-	cfg.Prefix = h.GetString(data, "prefix", DefaultEtcdPrefix)
-	cfg.Heartbeat = h.GetDuration(data, "heartbeat", DefaultEtcdHeartbeat*time.Second)
-	cfg.TTL = h.GetDuration(data, "ttl", DefaultEtcdTTL*time.Second)
-	cfg.TLSKey = h.GetString(data, "tls-key", DefaultEtcdTLSKey)
-	cfg.TLSCert = h.GetString(data, "tls-cert", DefaultEtcdTLSCert)
-	cfg.TLSCACert = h.GetString(data, "tls-ca-cert", DefaultEtcdTLSCACert)
+	yamlcfg.AssertIsMap("etcd", data)
+	cfg.URLs = yamlcfg.GetStringArray(data, "urls", []string{DefaultEtcdURL})
+	cfg.Prefix = yamlcfg.GetString(data, "prefix", DefaultEtcdPrefix)
+	cfg.Heartbeat = yamlcfg.GetDuration(data, "heartbeat", DefaultEtcdHeartbeat*time.Second)
+	cfg.TTL = yamlcfg.GetDuration(data, "ttl", DefaultEtcdTTL*time.Second)
+	cfg.TLSKey = yamlcfg.GetString(data, "tls-key", DefaultEtcdTLSKey)
+	cfg.TLSCert = yamlcfg.GetString(data, "tls-cert", DefaultEtcdTLSCert)
+	cfg.TLSCACert = yamlcfg.GetString(data, "tls-ca-cert", DefaultEtcdTLSCACert)
 	return true
 }
 
@@ -138,20 +138,20 @@ type Config struct {
 
 // SetYAML parses the YAML tree into the object.
 func (cfg *Config) SetYAML(tag string, data interface{}) bool {
-	h.AssertIsMap("config", data)
-	if loggingData, ok := h.GetMapItem(data, "logging"); ok {
+	yamlcfg.AssertIsMap("config", data)
+	if loggingData, ok := yamlcfg.GetMapItem(data, "logging"); ok {
 		cfg.Logging.SetYAML("logging", loggingData)
 	} else {
 		cfg.Logging = DefaultLoggingConfig()
 	}
 
-	if dockerData, ok := h.GetMapItem(data, "docker"); ok {
+	if dockerData, ok := yamlcfg.GetMapItem(data, "docker"); ok {
 		cfg.Docker.SetYAML("docker", dockerData)
 	} else {
 		cfg.Docker = DefaultDockerConfig()
 	}
 
-	if etcdData, ok := h.GetMapItem(data, "etcd"); ok {
+	if etcdData, ok := yamlcfg.GetMapItem(data, "etcd"); ok {
 		cfg.Etcd.SetYAML("etcd", etcdData)
 	} else {
 		cfg.Etcd = DefaultEtcdConfig()
