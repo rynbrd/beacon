@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
-	"github.com/BlueDragonx/yamlcfg"
+	"github.com/BlueDragonX/yamlcfg"
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
