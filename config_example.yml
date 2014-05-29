@@ -1,0 +1,15 @@
+# Example config.
+docker:
+  url: unix:///var/run/docker.sock
+  hostname: docker.example.net
+
+etcd:
+  urls:
+  - http://1.etcd.example.net:4001
+  - http://2.etcd.example.net:4001
+
+  # Refresh the service in etcd every two minutes.
+  heartbeat: 120
+
+  # Expire the service after 30 seconds if no heartbeat has been received.
+  ttl: 30
