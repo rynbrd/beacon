@@ -1,13 +1,13 @@
-Red Flag
-========
+Beacon
+======
 Service discovery for Docker and etcd!
 
 Installing
 ----------
 You can use the go command to get and install the package:
 
-    go get github.com/BlueDragonX/redflag
-    go install github.com/BlueDragonX/redflag
+    go get github.com/BlueDragonX/beacon
+    go install github.com/BlueDragonX/beacon
 
 Configuring
 -----------
