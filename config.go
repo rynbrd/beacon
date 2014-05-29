@@ -5,7 +5,7 @@ import (
 	"flag"
 	h "github.com/BlueDragonX/yamlcfg"
 	"io/ioutil"
-	"launchpad.net/goyaml"
+	"gopkg.in/yaml.v1"
 	"os"
 	"time"
 )
@@ -228,6 +228,6 @@ func LoadConfig() (cfg Config, err error) {
 	if err != nil {
 		return
 	}
-	err = goyaml.Unmarshal(data, &cfg)
+	err = yaml.Unmarshal(data, &cfg)
 	return
 }
