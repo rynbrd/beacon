@@ -16,7 +16,7 @@ func main() {
 	var cfg Config
 	var err error
 
-	if log, err = simplelog.NewLogger(simplelog.CONSOLE, "bosun"); err != nil {
+	if log, err = simplelog.NewLogger(simplelog.CONSOLE, "beacon"); err != nil {
 		fmt.Println("failed to create logger:", err)
 		os.Exit(1)
 	}
