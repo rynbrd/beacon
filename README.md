@@ -11,7 +11,7 @@ You can use the go command to get and install the package:
 
 Configuring
 -----------
-The redflag binary takes one option: -config. This takes as an argument the
+The beacon binary takes one option: -config. This takes as an argument the
 path to the config file to load. This defaults to "config.yml".
 
 The config file is a YAML file. It may contain the following options:
