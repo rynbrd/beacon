@@ -34,7 +34,7 @@ func (svc *Service) loadConfig(config string) (err error) {
 func (svc *Service) loadInfo(containerInfo *dockerclient.ContainerInfo, defaultHostname string) error {
 	key := fmt.Sprintf("%v/%v", svc.ContainerPort, svc.Protocol)
 	bindings, ok := containerInfo.HostConfig.PortBindings[key]
-	if !ok {
+	if !ok || len(bindings) == 0 {
 		return errors.New(fmt.Sprintf("service not exposed: %v", key))
 	}
 	binding := bindings[0]
