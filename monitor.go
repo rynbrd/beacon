@@ -23,7 +23,7 @@ type ServiceMonitor struct {
 // config in the Docker environment variable names configVar.
 func NewServiceMonitor(url, hostname, configVar string, pollInterval time.Duration) (mon *ServiceMonitor, err error) {
 	mon = &ServiceMonitor{}
-	mon.client, err = dockerclient.NewDockerClient(url)
+	mon.client, err = dockerclient.NewDockerClient(url, nil)
 	mon.hostname = hostname
 	mon.configVar = configVar
 	mon.state = Stopped
