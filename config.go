@@ -19,7 +19,7 @@ const (
 	DefaultServiceTtl       = 30
 	DefaultDockerURI        = "unix:///var/run/docker.sock"
 	DefaultEtcdURI          = "http://172.17.42.1:4001/"
-	DefaultEtcdPrefix       = "services"
+	DefaultEtcdPrefix       = "beacon"
 	DefaultEtcdTLSKey       = ""
 	DefaultEtcdTLSCert      = ""
 	DefaultEtcdTLSCACert    = ""
