@@ -35,7 +35,7 @@ func (svc *Service) loadInfo(containerInfo *dockerclient.ContainerInfo, defaultH
 	key := fmt.Sprintf("%v/%v", svc.ContainerPort, svc.Protocol)
 	bindings, ok := containerInfo.HostConfig.PortBindings[key]
 	if !ok || len(bindings) == 0 {
-		return errors.New(fmt.Sprintf("service not exposed: %v", key))
+		return errors.New(fmt.Sprintf("port not exposed: %v", key))
 	}
 	binding := bindings[0]
 	hostPort, _, err := parsePort(binding.HostPort)

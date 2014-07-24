@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/samalba/dockerclient"
+	"gopkg.in/BlueDragonX/simplelog.v1"
 	"strings"
 	"time"
 )
@@ -17,11 +18,12 @@ type ServiceMonitor struct {
 	services     map[string]*Service
 	pollInterval time.Duration
 	stop         chan bool
+	log          *simplelog.Logger
 }
 
 // Create a new service monitor listening on the given URL. Look for service
 // config in the Docker environment variable names configVar.
-func NewServiceMonitor(url, hostname, configVar string, pollInterval time.Duration) (mon *ServiceMonitor, err error) {
+func NewServiceMonitor(url, hostname, configVar string, pollInterval time.Duration, log *simplelog.Logger) (mon *ServiceMonitor, err error) {
 	mon = &ServiceMonitor{}
 	mon.client, err = dockerclient.NewDockerClient(url, nil)
 	mon.hostname = hostname
@@ -29,13 +31,17 @@ func NewServiceMonitor(url, hostname, configVar string, pollInterval time.Durati
 	mon.state = Stopped
 	mon.pollInterval = pollInterval
 	mon.stop = make(chan bool)
+	mon.log = log
 	return
 }
 
-func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, containerId string) (err error) {
+func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, containerId string) {
+	errorFmt := "container %.12s: %s"
+	var err error
 	var containerInfo *dockerclient.ContainerInfo
 	if containerInfo, err = mon.client.InspectContainer(containerId); err != nil {
-		return err
+		mon.log.Error(errorFmt, containerId, err)
+		return
 	}
 
 	configEnv := ""
@@ -45,13 +51,20 @@ func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, contain
 		}
 	}
 
+	if configEnv == "" {
+		mon.log.Debug(errorFmt, containerId, "no services defined, skipping")
+		return
+	}
+
 	configValues := strings.Split(configEnv, ",")
 	for _, configValue := range configValues {
 		svc := &Service{}
 		if err = svc.loadConfig(configValue); err != nil {
+			mon.log.Warn(errorFmt, containerId, err)
 			return
 		}
 		if err = svc.loadInfo(containerInfo, mon.hostname); err != nil {
+			mon.log.Warn(errorFmt, containerId, err)
 			return
 		}
 
@@ -65,7 +78,6 @@ func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, contain
 		}
 		mon.services[svc.Hash()] = svc
 	}
-	return
 }
 
 func (mon *ServiceMonitor) removeContainer(serviceEvents chan ServiceEvent, containerId string) {
@@ -82,11 +94,15 @@ func (mon *ServiceMonitor) removeContainer(serviceEvents chan ServiceEvent, cont
 	}
 }
 
-func (mon *ServiceMonitor) poll(serviceEvents chan ServiceEvent) (err error) {
+func (mon *ServiceMonitor) poll(serviceEvents chan ServiceEvent) {
+	var err error
 	var containers []dockerclient.Container
 	if containers, err = mon.client.ListContainers(false); err != nil {
-		return err
+		mon.log.Error("polling failed: %s", err)
+		return
 	}
+
+	mon.log.Debug("polling for containers")
 
 	containerIds := make(map[string]bool, len(containers))
 	for _, container := range containers {
@@ -100,7 +116,6 @@ func (mon *ServiceMonitor) poll(serviceEvents chan ServiceEvent) (err error) {
 		}
 	}
 	mon.containers = containerIds
-	return nil
 }
 
 func (mon *ServiceMonitor) Listen(serviceEvents chan ServiceEvent) error {

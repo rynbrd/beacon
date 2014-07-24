@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -25,7 +27,9 @@ func parseEnv(envVar string) (name string, value string) {
 // Parse a port declaration. Protocol is assumed to be tcp if absent.
 func parsePort(portStr string) (port int, protocol string, err error) {
 	parts := strings.SplitN(portStr, "/", 2)
-	if port, err = strconv.Atoi(strings.TrimSpace(parts[0])); err != nil {
+	portClean := strings.TrimSpace(parts[0])
+	if port, err = strconv.Atoi(portClean); err != nil {
+		err = errors.New(fmt.Sprintf("port is not an integer: %v", portClean))
 		return
 	}
 
