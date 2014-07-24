@@ -9,53 +9,93 @@ You can use the go command to get and install the package:
     go get github.com/BlueDragonX/beacon
     go install github.com/BlueDragonX/beacon
 
-Configuring
------------
-The beacon binary takes one option: -config. This takes as an argument the
-path to the config file to load. This defaults to "config.yml".
+How It Works
+------------
+Beacon listens for `start` and `die` events in Docker. When a `start` event is
+recieved Beacon will read the service configuration on the running container,
+look up port mappings for the defined available services, and place this
+information into etcd. On `die` Beacon will remove the items it added to etcd
+for that container.
 
-The config file is a YAML file. It may contain the following options:
+Beacon will poll Docker on start to add services to etcd. It will also remove
+any announced services on shutdown. Beacon also polls Docker periodically to
+ensure all services are available.
 
-- *syslog* - Control logging to syslog. Boolean. Defaults to false.
-- *console* - Control logging to console. Boolean. Defaults to true.
-- *docker-url* - The path to the Docker socket. String. Defaults to
-  "unix://var/run/docker.sock".
-- *docker-var* - The environment variable published by the Docker container
-  which defines services exposed by the container. String. Defaults to
-  "SERVICES".
-- *etcd-urls* - A list of etcd URL's to connect to. Array of strings. Defaults
-  to ["http://172.17.42.1:4001/"].
-- *etcd-prefix* - The root directory in which to store discovered services in.
-  String. Defaults to "services".
-- *hostname* - The DNS name of the Docker host. This is the hostname stored in
-  etcd where external services can access discovered services. String. Defaults
-  to the output of hostname.
-- *heartbeat* - How often (in seconds) services will be refreshed in etcd.
-  Integer. Defaults to 30.
-- *ttl* - How long (in seconds) a service should remain active after receiving
-  a heartbeat. Integer. Defaults to 30.
-- *tls-key* - The TLS key to use when communicating with etcd. String. Defaults
-  to "".
-- *tls-cert* - The TLS cert to use when communicating with etcd. String.
-  Defaults to "".
-- *tls-ca-cert* - The TLS CA cert to use when communicating with etcd. String.
-  Defaults to "".
+Keys added to etcd have a TTL associated with them. The TTL is used in
+conjunction with Beacon's polling to ensure services are cleaned up
+automatically should an unexpected failure occur. This could be caused by an
+uncontrolled shutdown of the host system, your other datacenter catching fire,
+or whatever.
 
-Services
---------
-Services are announced to etcd under the _etcd-prefix_ defined in the config file. The service paths are structured as follows:
+Configuring Beacon
+------------------
+The beacon binary takes one option: `-config`. This takes as an argument the
+path to the config file to load. This defaults to `config.yml` in the current
+directory. An [example config file][1] is available.
+
+The config file itself is YAML. It is structured into three sections:
+`service`, `docker`, `etcd`, and `logging`.
+
+### service ###
+This section defines service configuration including timeouts and service
+location. Available parameters are:
+
+- `var` - The name of an environment variable on a container to read service
+  configuration from. This defaults to `SERVICES`. The value of this variable
+  is a comma separated list of service definitions. The structure of a service
+  definition is `name:port/protocol` where `name` is the name of the service,
+  `port` is the port the service listens on, and protocol is either `tcp` or
+  `udp`. The protocol defaults to `tcp` if omitted. If the container does not
+  expose a port for a defined service then it will not be announced.
+- `hostname` - The hostname the services should be reachable at. This should be
+  an address reachable by external clients of your service. Defaults to the
+  system hostname.
+- `heartbeat` - How often (in seconds) services will be polled. Defaults to 30.
+- `ttl` - How long (in seconds) a service should remain active after receiving
+  a heartbeat. Defaults to 30. The etcd TTL is calculated as `heartbeat + ttl`.
+
+### docker ###
+This section configures the connection to Docker. Available parameters are:
+
+- `uri` - The URI to connect to Docker at. Defaults to `unix:///var/run/docker.sock`.
+
+### etcd ###
+This section configures the connection to etcd. Available parameters are:
+
+- `uri` - The URI to connect to etcd at. Defaults to `http://172.17.42.1:4001/`.
+- `uris` - Connect to multiple etcd nodes. Used as an alternative to `uri` when
+  redundancy is called for.
+- `prefix` - etcd key paths will be prefixed with this value. Defaults to `beacon`.
+- `tls-key` - The path to the TLS private key to use when connecting. Must be
+  provided to enable TLS.
+- `tls-cert` - The path to the TLS certificate to use when connecting. Must be
+  provided to enable TLS.
+- `tls-ca-cert` - The path to the TLS CA certificate to use when connecting.
+  Must be provided to enable TLS.
+
+### logging ###
+This section controls how Beacon outputs logging. Available parameters are:
+
+- `console` - Whether or not to log to the console. Defaults to true.
+- `syslog` - Whether or not to log to syslog. Defaults to false.
+
+Etcd Keys
+---------
+Services are announced to etcd under the `etcd.prefix` defined in the config file. The service paths are structured as follows:
 
     /<service_name>/<container_id>/<keys>
 
 The following keys are set fore each service/container:
 
-- *container-name* - The hostname of the container the service is running on.
-- *container-port* - The port the container exposes for this service.
-- *host-name* - The DNS name (or possibly an IP address) of the host running the container.
-- *host-port* - The port on the host that is mapped to this service.
-- *protocol* - The protocol the service. Either tcp or udp.
+- `container-name` - The hostname of the container the service is running on.
+- `container-port` - The port the container exposes for this service.
+- `host-name` - The value of `service.hostname`.
+- `host-port` - The port on the host that is mapped to this service.
+- `protocol` - The protocol of the service. Either `tcp` or `udp`.
 
 License
 -------
 Copyright (c) 2014 Ryan Bourgeois. Licensed under BSD-Modified. See the LICENSE
 file for a copy of the license.
+
+[1]: https://github.com/BlueDragonX/beacon/blob/master/config_example.yml "Beacon Example Config"

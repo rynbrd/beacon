@@ -18,3 +18,7 @@ etcd:
   uris:
   - http://1.etcd.example.net:4001
   - http://2.etcd.example.net:4001
+
+logging:
+  # enable syslog
+  syslog: true
