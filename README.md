@@ -95,7 +95,8 @@ The following keys are set fore each service/container:
 
 License
 -------
-Copyright (c) 2014 Ryan Bourgeois. Licensed under BSD-Modified. See the LICENSE
-file for a copy of the license.
+Copyright (c) 2014 Ryan Bourgeois. Licensed under BSD-Modified. See the
+[LICENSE][2] file for a copy of the license.
 
-[1]: https://github.com/BlueDragonX/beacon/blob/master/config_example.yml "Beacon Example Config"
+[1]: https://raw.githubusercontent.com/BlueDragonX/beacon/master/config_example.yml "Beacon Example Config"
+[2]: https://raw.githubusercontent.com/BlueDragonX/beacon/master/LICENSE "Beacon License"
