@@ -11,18 +11,18 @@ import (
 )
 
 const (
-	DefaultConfigFile     = "config.yml"
-	DefaultLoggingSyslog  = false
-	DefaultLoggingConsole = true
-	DefaultDockerURL      = "unix:///var/run/docker.sock"
-	DefaultDockerVar      = "SERVICES"
-	DefaultEtcdURL        = "http://172.17.42.1:4001/"
-	DefaultEtcdPrefix     = "services"
-	DefaultEtcdHeartbeat  = 30
-	DefaultEtcdTTL        = 30
-	DefaultEtcdTLSKey     = ""
-	DefaultEtcdTLSCert    = ""
-	DefaultEtcdTLSCACert  = ""
+	DefaultConfigFile       = "config.yml"
+	DefaultLoggingSyslog    = false
+	DefaultLoggingConsole   = true
+	DefaultServiceVar       = "SERVICES"
+	DefaultServiceHeartbeat = 30
+	DefaultServiceTtl       = 30
+	DefaultDockerURI        = "unix:///var/run/docker.sock"
+	DefaultEtcdURI          = "http://172.17.42.1:4001/"
+	DefaultEtcdPrefix       = "services"
+	DefaultEtcdTLSKey       = ""
+	DefaultEtcdTLSCert      = ""
+	DefaultEtcdTLSCACert    = ""
 )
 
 func fileIsReadable(path string) bool {
@@ -62,37 +62,75 @@ func (cfg *LoggingConfig) SetYAML(tag string, data interface{}) bool {
 	return true
 }
 
+// Store service related configuration.
+type ServiceConfig struct {
+	Var       string
+	Hostname  string
+	Heartbeat time.Duration
+	Ttl       time.Duration
+}
+
+// Get default service config.
+func DefaultServiceConfig() ServiceConfig {
+	return ServiceConfig{
+		DefaultServiceVar,
+		getHostname(""),
+		DefaultServiceHeartbeat * time.Second,
+		DefaultServiceTtl,
+	}
+}
+
+// SetYAML parses the YAML tree into the object.
+func (cfg *ServiceConfig) SetYAML(tag string, data interface{}) bool {
+	yamlcfg.AssertIsMap("service", data)
+	cfg.Var = yamlcfg.GetString(data, "var", DefaultServiceVar)
+	cfg.Hostname = getHostname(yamlcfg.GetString(data, "hostname", ""))
+	cfg.Heartbeat = yamlcfg.GetDuration(data, "heartbeat", DefaultServiceHeartbeat*time.Second)
+	cfg.Ttl = yamlcfg.GetDuration(data, "ttl", DefaultServiceTtl*time.Second)
+	return true
+}
+
+// Validate the configuration.
+func (cfg *ServiceConfig) Validate() []error {
+	errs := []error{}
+	if cfg.Var == "" {
+		errs = append(errs, errors.New("invalid value for service.var"))
+	}
+	if cfg.Hostname == "" {
+		errs = append(errs, errors.New("invalid value for service.hostname"))
+	}
+	if cfg.Heartbeat <= 0*time.Second {
+		errs = append(errs, errors.New("invalid value for service.heartbeat"))
+	}
+	if cfg.Ttl <= 0*time.Second {
+		errs = append(errs, errors.New("invalid value for service.ttl"))
+	}
+	return errs
+}
+
 // Store Docker related configuration.
 type DockerConfig struct {
-	URL      string
-	Var      string
-	Hostname string
+	URI string
 }
 
 // Get default Docker config.
 func DefaultDockerConfig() DockerConfig {
 	return DockerConfig{
-		DefaultDockerURL,
-		DefaultDockerVar,
-		getHostname(""),
+		DefaultDockerURI,
 	}
 }
 
 // SetYAML parses the YAML tree into the object.
 func (cfg *DockerConfig) SetYAML(tag string, data interface{}) bool {
 	yamlcfg.AssertIsMap("docker", data)
-	cfg.URL = yamlcfg.GetString(data, "url", DefaultDockerURL)
-	cfg.Var = yamlcfg.GetString(data, "var", DefaultDockerVar)
-	cfg.Hostname = getHostname(yamlcfg.GetString(data, "hostname", ""))
+	cfg.URI = yamlcfg.GetString(data, "uri", DefaultDockerURI)
 	return true
 }
 
 // Store etcd related configuration.
 type EtcdConfig struct {
-	URLs      []string
+	URIs      []string
 	Prefix    string
-	Heartbeat time.Duration
-	TTL       time.Duration
 	TLSKey    string
 	TLSCert   string
 	TLSCACert string
@@ -101,10 +139,8 @@ type EtcdConfig struct {
 //Get default etcd config.
 func DefaultEtcdConfig() EtcdConfig {
 	return EtcdConfig{
-		[]string{DefaultEtcdURL},
+		[]string{DefaultEtcdURI},
 		DefaultEtcdPrefix,
-		DefaultEtcdHeartbeat * time.Second,
-		DefaultEtcdTTL,
 		DefaultEtcdTLSKey,
 		DefaultEtcdTLSCert,
 		DefaultEtcdTLSCACert,
@@ -114,10 +150,17 @@ func DefaultEtcdConfig() EtcdConfig {
 // SetYAML parses the YAML tree into the object.
 func (cfg *EtcdConfig) SetYAML(tag string, data interface{}) bool {
 	yamlcfg.AssertIsMap("etcd", data)
-	cfg.URLs = yamlcfg.GetStringArray(data, "urls", []string{DefaultEtcdURL})
+	cfg.URIs = yamlcfg.GetStringArray(data, "uris", []string{})
+
+	uri := yamlcfg.GetString(data, "uri", "")
+	if uri != "" {
+		cfg.URIs = append(cfg.URIs, uri)
+	}
+	if len(cfg.URIs) == 0 {
+		cfg.URIs = append(cfg.URIs, DefaultEtcdURI)
+	}
+
 	cfg.Prefix = yamlcfg.GetString(data, "prefix", DefaultEtcdPrefix)
-	cfg.Heartbeat = yamlcfg.GetDuration(data, "heartbeat", DefaultEtcdHeartbeat*time.Second)
-	cfg.TTL = yamlcfg.GetDuration(data, "ttl", DefaultEtcdTTL*time.Second)
 	cfg.TLSKey = yamlcfg.GetString(data, "tls-key", DefaultEtcdTLSKey)
 	cfg.TLSCert = yamlcfg.GetString(data, "tls-cert", DefaultEtcdTLSCert)
 	cfg.TLSCACert = yamlcfg.GetString(data, "tls-ca-cert", DefaultEtcdTLSCACert)
@@ -132,6 +175,7 @@ func (cfg EtcdConfig) IsTLS() bool {
 // Root config object.
 type Config struct {
 	Logging LoggingConfig
+	Service ServiceConfig
 	Docker  DockerConfig
 	Etcd    EtcdConfig
 }
@@ -143,6 +187,12 @@ func (cfg *Config) SetYAML(tag string, data interface{}) bool {
 		cfg.Logging.SetYAML("logging", loggingData)
 	} else {
 		cfg.Logging = DefaultLoggingConfig()
+	}
+
+	if serviceData, ok := yamlcfg.GetMapItem(data, "service"); ok {
+		cfg.Service.SetYAML("service", serviceData)
+	} else {
+		cfg.Service = DefaultServiceConfig()
 	}
 
 	if dockerData, ok := yamlcfg.GetMapItem(data, "docker"); ok {
@@ -167,14 +217,8 @@ func (cfg *LoggingConfig) Validate() []error {
 // Validate the configuration.
 func (cfg *DockerConfig) Validate() []error {
 	errs := []error{}
-	if cfg.URL == "" {
-		errs = append(errs, errors.New("invalid value for docker.url"))
-	}
-	if cfg.Var == "" {
-		errs = append(errs, errors.New("invalid value for docker.var"))
-	}
-	if cfg.Hostname == "" {
-		errs = append(errs, errors.New("invalid value for docker.hostname"))
+	if cfg.URI == "" {
+		errs = append(errs, errors.New("invalid value for docker.uri"))
 	}
 	return errs
 }
@@ -182,17 +226,11 @@ func (cfg *DockerConfig) Validate() []error {
 // Validate the configuration.
 func (cfg *EtcdConfig) Validate() []error {
 	errs := []error{}
-	if len(cfg.URLs) == 0 || cfg.URLs[0] == "" {
-		errs = append(errs, errors.New("invalid value for etcd.urls"))
+	if len(cfg.URIs) == 0 || cfg.URIs[0] == "" {
+		errs = append(errs, errors.New("invalid value for etcd.uris"))
 	}
 	if cfg.Prefix == "" {
-		errs = append(errs, errors.New("invalid value for etcd. prefix"))
-	}
-	if cfg.Heartbeat <= 0*time.Second {
-		errs = append(errs, errors.New("invalid value for etcd.heartbeat"))
-	}
-	if cfg.TTL <= 0*time.Second {
-		errs = append(errs, errors.New("invalid value for etcd.ttl"))
+		errs = append(errs, errors.New("invalid value for etcd.prefix"))
 	}
 	if cfg.IsTLS() {
 		if !fileIsReadable(cfg.TLSKey) {
@@ -212,6 +250,7 @@ func (cfg *EtcdConfig) Validate() []error {
 func (cfg Config) Validate() []error {
 	errs := []error{}
 	errs = append(errs, cfg.Logging.Validate()...)
+	errs = append(errs, cfg.Service.Validate()...)
 	errs = append(errs, cfg.Docker.Validate()...)
 	errs = append(errs, cfg.Etcd.Validate()...)
 	return errs

@@ -32,24 +32,24 @@ func main() {
 	}
 
 	log.Notice("starting")
-	log.Info("using Docker at %s", cfg.Docker.URL)
-	log.Info("using etcd at %s", strings.Join(cfg.Etcd.URLs, ", "))
+	log.Info("using Docker at %s", cfg.Docker.URI)
+	log.Info("using etcd at %s", strings.Join(cfg.Etcd.URIs, ", "))
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	if mon, err = NewServiceMonitor(cfg.Docker.URL, cfg.Docker.Hostname, cfg.Docker.Var, cfg.Etcd.Heartbeat); err != nil {
+	if mon, err = NewServiceMonitor(cfg.Docker.URI, cfg.Service.Hostname, cfg.Service.Var, cfg.Service.Heartbeat); err != nil {
 		log.Fatal("monitor failed: %s", err)
 	}
 
-	ttl := uint64(cfg.Etcd.Heartbeat.Seconds() + cfg.Etcd.TTL.Seconds())
+	ttl := uint64(cfg.Service.Heartbeat.Seconds() + cfg.Service.Ttl.Seconds())
 	if cfg.Etcd.IsTLS() {
-		ann, err = NewTLSServiceAnnouncer(cfg.Etcd.URLs, cfg.Etcd.TLSCert, cfg.Etcd.TLSKey, cfg.Etcd.TLSCACert, cfg.Etcd.Prefix, ttl)
+		ann, err = NewTLSServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.TLSCert, cfg.Etcd.TLSKey, cfg.Etcd.TLSCACert, cfg.Etcd.Prefix, ttl)
 		if err != nil {
 			log.Fatal("announcer failed: %s", err)
 		}
 	} else {
-		ann = NewServiceAnnouncer(cfg.Etcd.URLs, cfg.Etcd.Prefix, ttl)
+		ann = NewServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.Prefix, ttl)
 	}
 
 	events := make(chan ServiceEvent, 1)
