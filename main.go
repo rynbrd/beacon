@@ -45,12 +45,12 @@ func main() {
 
 	ttl := uint64(cfg.Service.Heartbeat.Seconds() + cfg.Service.Ttl.Seconds())
 	if cfg.Etcd.IsTLS() {
-		ann, err = NewTLSServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.TLSCert, cfg.Etcd.TLSKey, cfg.Etcd.TLSCACert, cfg.Etcd.Prefix, ttl)
+		ann, err = NewTLSServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.TLSCert, cfg.Etcd.TLSKey, cfg.Etcd.TLSCACert, cfg.Etcd.Prefix, ttl, log)
 		if err != nil {
 			log.Fatal("announcer failed: %s", err)
 		}
 	} else {
-		ann = NewServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.Prefix, ttl)
+		ann = NewServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.Prefix, ttl, log)
 	}
 
 	events := make(chan ServiceEvent, 1)

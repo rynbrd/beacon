@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/coreos/go-etcd/etcd"
+	"gopkg.in/BlueDragonX/simplelog.v1"
 )
 
 // Return true if the err is an EtcdError and has the given error code.
@@ -18,9 +19,10 @@ type ServiceAnnouncer struct {
 	client *etcd.Client
 	prefix string
 	ttl    uint64
+	log    *simplelog.Logger
 }
 
-func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64) *ServiceAnnouncer {
+func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64, log *simplelog.Logger) *ServiceAnnouncer {
 	if prefix != "" {
 		if prefix[0] != '/' {
 			prefix = "/" + prefix
@@ -33,19 +35,20 @@ func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64) *Servic
 	ann.client = client
 	ann.prefix = prefix
 	ann.ttl = ttl
+	ann.log = log
 	return ann
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster.
-func NewServiceAnnouncer(urls []string, prefix string, ttl uint64) *ServiceAnnouncer {
-	return newServiceAnnouncer(etcd.NewClient(urls), prefix, ttl)
+func NewServiceAnnouncer(urls []string, prefix string, ttl uint64, log *simplelog.Logger) *ServiceAnnouncer {
+	return newServiceAnnouncer(etcd.NewClient(urls), prefix, ttl, log)
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster over TLS.
-func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl uint64) (ann *ServiceAnnouncer, err error) {
+func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl uint64, log *simplelog.Logger) (ann *ServiceAnnouncer, err error) {
 	var client *etcd.Client
 	if client, err = etcd.NewTLSClient(urls, cert, key, caCert); err == nil {
-		ann = newServiceAnnouncer(client, prefix, ttl)
+		ann = newServiceAnnouncer(client, prefix, ttl, log)
 	}
 	return
 }
@@ -56,7 +59,13 @@ func (ann *ServiceAnnouncer) getServicePath(svc *Service) string {
 }
 
 func (ann *ServiceAnnouncer) setValue(svc *Service, root, name, value string) (err error) {
-	_, err = ann.client.Set(fmt.Sprintf("%v/%v", root, name), value, 0)
+	key := fmt.Sprintf("%v/%v", root, name)
+	_, err = ann.client.Set(key, value, 0)
+	if err == nil {
+		ann.log.Debug("etcd set '%s' = '%s'", key, value)
+	} else {
+		ann.log.Error("etcd failed to set '%s' = '%s'", key, value)
+	}
 	return
 }
 
@@ -100,7 +109,9 @@ func (ann *ServiceAnnouncer) heartbeatService(svc *Service) (err error) {
 func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
 	root := ann.getServicePath(svc)
 	_, err = ann.client.Delete(root, true)
-	ann.client.DeleteDir(fmt.Sprintf("%v/%v", ann.prefix, svc.Name))
+	key := fmt.Sprintf("%v/%v", ann.prefix, svc.Name)
+	ann.client.DeleteDir(key)
+	ann.log.Debug("etcd delete '%s'", key)
 	return
 }
 
