@@ -78,6 +78,8 @@ This section controls how Beacon outputs logging. Available parameters are:
 
 - `console` - Whether or not to log to the console. Defaults to true.
 - `syslog` - Whether or not to log to syslog. Defaults to false.
+- `level` - The log level. Valid values are `debug`, `info`, `notice`, `warn`,
+  `error`, or `fatal`.
 
 Etcd Keys
 ---------

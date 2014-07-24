@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"gopkg.in/BlueDragonX/simplelog.v1"
 	"gopkg.in/BlueDragonX/yamlcfg.v1"
 	"gopkg.in/yaml.v1"
 	"io/ioutil"
@@ -14,6 +15,7 @@ const (
 	DefaultConfigFile       = "config.yml"
 	DefaultLoggingSyslog    = false
 	DefaultLoggingConsole   = true
+	DefaultLoggingLevel     = simplelog.NOTICE
 	DefaultServiceVar       = "SERVICES"
 	DefaultServiceHeartbeat = 30
 	DefaultServiceTtl       = 30
@@ -44,6 +46,7 @@ func getHostname(hostname string) string {
 type LoggingConfig struct {
 	Syslog  bool
 	Console bool
+	Level   int
 }
 
 // Get default logging config.
@@ -51,6 +54,7 @@ func DefaultLoggingConfig() LoggingConfig {
 	return LoggingConfig{
 		DefaultLoggingSyslog,
 		DefaultLoggingConsole,
+		DefaultLoggingLevel,
 	}
 }
 
@@ -59,6 +63,12 @@ func (cfg *LoggingConfig) SetYAML(tag string, data interface{}) bool {
 	yamlcfg.AssertIsMap("logging", data)
 	cfg.Syslog = yamlcfg.GetBool(data, "syslog", DefaultLoggingSyslog)
 	cfg.Console = yamlcfg.GetBool(data, "console", DefaultLoggingConsole)
+	levelStr := yamlcfg.GetString(data, "level", "")
+	if levelStr == "" {
+		cfg.Level = DefaultLoggingLevel
+	} else {
+		cfg.Level = simplelog.StringToLevel(levelStr)
+	}
 	return true
 }
 

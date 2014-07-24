@@ -31,6 +31,7 @@ func main() {
 		log.Fatal("could not process config file")
 	}
 
+	log.SetLevel(cfg.Logging.Level)
 	log.Notice("starting")
 	log.Info("using Docker at %s", cfg.Docker.URI)
 	log.Info("using etcd at %s", strings.Join(cfg.Etcd.URIs, ", "))
