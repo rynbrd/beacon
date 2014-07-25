@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/coreos/go-etcd/etcd"
 	"gopkg.in/BlueDragonX/simplelog.v1"
+	"strconv"
 )
 
 // Return true if the err is an EtcdError and has the given error code.
@@ -53,6 +55,81 @@ func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl
 	return
 }
 
+// Increment an index counter in etcd. Replace or create the key if it's not a valid int.
+func (ann *ServiceAnnouncer) increment(key string) (value int, err error) {
+
+	createKey := func() (value int, err error) {
+		_, err = ann.client.Set(key, "0", 0)
+		return 0, err
+	}
+
+	replaceKey := func() (value int, err error) {
+		value = 0
+		if _, err = ann.client.Delete(key, true); err == nil {
+			_, err = createKey()
+		}
+		return
+	}
+
+	incrementKey := func(value int) (int, error) {
+		newValue := value + 1
+		newValueStr := fmt.Sprintf("%v", newValue)
+		oldValueStr := fmt.Sprintf("%v", value)
+		_, err := ann.client.CompareAndSwap(key, newValueStr, 0, oldValueStr, 0)
+		return newValue, err
+	}
+
+	var response *etcd.Response
+
+	for {
+		if response, err = ann.client.Get(key, false, false); err != nil {
+			value, err = createKey()
+		} else if response.Node.Dir {
+			// replace the directory with zero
+			value, err = replaceKey()
+		} else {
+			if value, err = strconv.Atoi(response.Node.Value); err != nil {
+				// parse the value and replace it with zero if we can't
+				value, err = replaceKey()
+			} else {
+				// increment the value
+				value, err = incrementKey(value)
+				if err != nil {
+					// convert value
+					if etcdError, ok := err.(*etcd.EtcdError); ok {
+						if etcdError.ErrorCode == 101 {
+							continue
+						}
+					}
+				}
+			}
+		}
+		break
+	}
+
+	if err == nil {
+		ann.log.Debug("increment %s to %d", key, value)
+	} else {
+		ann.log.Error("failed to increment %s: %s", key, err)
+	}
+	return
+}
+
+// Increment all indexes.
+func (ann *ServiceAnnouncer) incrementIndexes(svc *Service) error {
+	indexes := []string{
+		fmt.Sprintf("%v/index", ann.prefix),
+		fmt.Sprintf("%v/%v/index", ann.prefix, svc.Name),
+	}
+
+	for _, index := range indexes {
+		if _, err := ann.increment(index); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Return the path to the directory for a service.
 func (ann *ServiceAnnouncer) getServicePath(svc *Service) string {
 	return fmt.Sprintf("%v/%v/%v", ann.prefix, svc.Name, svc.ContainerId)
@@ -94,6 +171,9 @@ func (ann *ServiceAnnouncer) addService(svc *Service) (err error) {
 	if err = ann.setValue(svc, root, "protocol", svc.Protocol); err != nil {
 		return
 	}
+	if err = ann.incrementIndexes(svc); err != nil {
+		return
+	}
 	return
 }
 
@@ -106,12 +186,56 @@ func (ann *ServiceAnnouncer) heartbeatService(svc *Service) (err error) {
 	return
 }
 
+func (ann *ServiceAnnouncer) cleanService(svc *Service) (err error) {
+	svcKey := fmt.Sprintf("%v/%v", ann.prefix, svc.Name)
+	indexKey := fmt.Sprintf("%v/index", svcKey)
+
+	var response *etcd.Response
+	if response, err = ann.client.Get(svcKey, false, false); err != nil {
+		return
+	}
+	if !response.Node.Dir || len(response.Node.Nodes) > 1 {
+		return
+	}
+
+	var indexNode *etcd.Node
+	for _, node := range response.Node.Nodes {
+		if node.Key == indexKey {
+			indexNode = node
+			break
+		}
+	}
+
+	if indexNode == nil {
+		return errors.New(fmt.Sprintf("%s not found", indexKey))
+	}
+
+	var index int
+	if index, err = strconv.Atoi(indexNode.Value); err != nil {
+		return
+	}
+	if _, err = ann.client.CompareAndDelete(indexKey, fmt.Sprintf("%d", index), 0); err != nil {
+		return
+	}
+	_, err = ann.client.DeleteDir(svcKey)
+	return
+}
+
 func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
 	root := ann.getServicePath(svc)
-	_, err = ann.client.Delete(root, true)
 	key := fmt.Sprintf("%v/%v", ann.prefix, svc.Name)
-	ann.client.DeleteDir(key)
-	ann.log.Debug("etcd delete '%s'", key)
+	_, err = ann.client.Delete(root, true)
+	if err == nil {
+		err = ann.incrementIndexes(svc)
+		if err == nil {
+			err = ann.cleanService(svc)
+		}
+	}
+	if err == nil {
+		ann.log.Debug("etcd delete '%s'", key)
+	} else {
+		ann.log.Debug("etcd delete '%s' failed: %s", key, err)
+	}
 	return
 }
 
