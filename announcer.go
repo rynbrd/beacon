@@ -59,14 +59,13 @@ func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl
 func (ann *ServiceAnnouncer) increment(key string) (value int, err error) {
 
 	createKey := func() (value int, err error) {
-		_, err = ann.client.Set(key, "0", 0)
-		return 0, err
+		_, err = ann.client.Set(key, "1", 0)
+		return 1, err
 	}
 
 	replaceKey := func() (value int, err error) {
-		value = 0
 		if _, err = ann.client.Delete(key, true); err == nil {
-			_, err = createKey()
+			value, err = createKey()
 		}
 		return
 	}
