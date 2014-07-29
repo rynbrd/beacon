@@ -117,8 +117,8 @@ func (ann *ServiceAnnouncer) increment(key string) (value int, err error) {
 // Increment all indexes.
 func (ann *ServiceAnnouncer) incrementIndexes(svc *Service) error {
 	indexes := []string{
-		fmt.Sprintf("%v/index", ann.prefix),
-		fmt.Sprintf("%v/%v/index", ann.prefix, svc.Name),
+		fmt.Sprintf("%v/_index", ann.prefix),
+		fmt.Sprintf("%v/%v/_index", ann.prefix, svc.Name),
 	}
 
 	for _, index := range indexes {
