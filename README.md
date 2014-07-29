@@ -96,6 +96,11 @@ The following keys are set fore each service/container:
 - `host-port` - The port on the host that is mapped to this service.
 - `protocol` - The protocol of the service. Either `tcp` or `udp`.
 
+There are two index keys which are incremented after services are updated:
+
+- `/_index` - The global index. Incremented after any service is changed.
+- `/<service_name>/_index` - Service index. Incremented after that service changes.
+
 License
 -------
 Copyright (c) 2014 Ryan Bourgeois. Licensed under BSD-Modified. See the
