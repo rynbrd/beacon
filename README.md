@@ -2,13 +2,6 @@ Beacon
 ======
 Service discovery for Docker and etcd!
 
-Installing
-----------
-You can use the go command to get and install the package:
-
-    go get github.com/BlueDragonX/beacon
-    go install github.com/BlueDragonX/beacon
-
 How It Works
 ------------
 Beacon listens for `start` and `die` events in Docker. When a `start` event is
@@ -27,13 +20,20 @@ automatically should an unexpected failure occur. This could be caused by an
 uncontrolled shutdown of the host system, your other datacenter catching fire,
 or whatever.
 
-Configuring Beacon
-------------------
+Installing
+----------
+You can use the go command to get and install the package:
+
+    go get github.com/BlueDragonX/beacon
+    go install github.com/BlueDragonX/beacon
+
+Configuring 
+-----------
 The beacon binary takes one option: `-config`. This takes as an argument the
 path to the config file to load. This defaults to `config.yml` in the current
 directory. An [example config file][1] is available.
 
-The config file itself is YAML. It is structured into three sections:
+The config file itself is YAML. It is structured into four sections:
 `service`, `docker`, `etcd`, and `logging`.
 
 ### service ###
@@ -83,7 +83,8 @@ This section controls how Beacon outputs logging. Available parameters are:
 
 Etcd Keys
 ---------
-Services are announced to etcd under the `etcd.prefix` defined in the config file. The service paths are structured as follows:
+Services are announced to etcd under the `etcd.prefix` defined in the config
+file. The service paths are structured as follows:
 
     /<service_name>/<container_id>/<keys>
 
