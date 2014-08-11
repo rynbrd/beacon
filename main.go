@@ -39,7 +39,7 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	if mon, err = NewServiceMonitor(cfg.Docker.URI, cfg.Service.Hostname, cfg.Service.Var, cfg.Service.Heartbeat, log); err != nil {
+	if mon, err = NewServiceMonitor(cfg.Docker.URI, cfg.Service.Hostname, cfg.Service.Tags, cfg.Service.Var, cfg.Service.TagsVar, cfg.Service.Heartbeat, log); err != nil {
 		log.Fatal("monitor failed: %s", err)
 	}
 

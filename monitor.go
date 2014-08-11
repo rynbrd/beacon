@@ -12,7 +12,9 @@ import (
 type ServiceMonitor struct {
 	client       *dockerclient.DockerClient
 	hostname     string
+	tags         map[string]bool
 	configVar    string
+	tagsVar      string
 	state        int32
 	containers   map[string]bool
 	services     map[string]*Service
@@ -23,15 +25,25 @@ type ServiceMonitor struct {
 
 // Create a new service monitor listening on the given URL. Look for service
 // config in the Docker environment variable names configVar.
-func NewServiceMonitor(url, hostname, configVar string, pollInterval time.Duration, log *simplelog.Logger) (mon *ServiceMonitor, err error) {
+func NewServiceMonitor(url, hostname string, tags []string, configVar, tagsVar string, pollInterval time.Duration, log *simplelog.Logger) (mon *ServiceMonitor, err error) {
 	mon = &ServiceMonitor{}
 	mon.client, err = dockerclient.NewDockerClient(url, nil)
 	mon.hostname = hostname
+	mon.tags = make(map[string]bool)
 	mon.configVar = configVar
+	mon.tagsVar = tagsVar
 	mon.state = Stopped
 	mon.pollInterval = pollInterval
 	mon.stop = make(chan bool)
 	mon.log = log
+
+	if tags != nil {
+		for _, tag := range tags {
+			if tag != "" {
+				mon.tags[tag] = true
+			}
+		}
+	}
 	return
 }
 
@@ -45,15 +57,33 @@ func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, contain
 	}
 
 	configEnv := ""
+	tagsEnv := ""
 	for _, envVar := range containerInfo.Config.Env {
-		if envName, envValue := parseEnv(envVar); envName == mon.configVar {
+		envName, envValue := parseEnv(envVar)
+		if envName == mon.configVar {
 			configEnv = envValue
+		} else if envName == mon.tagsVar {
+			tagsEnv = envValue
 		}
 	}
 
 	if configEnv == "" {
 		mon.log.Debug(errorFmt, containerId, "no services defined, skipping")
 		return
+	}
+
+	tags := parseTags(tagsEnv)
+	if len(mon.tags) > 0 {
+		found := false
+		for _, tag := range tags {
+			if _, found = mon.tags[tag]; found {
+				break
+			}
+		}
+		if !found {
+			mon.log.Debug(errorFmt, containerId, "not tagged, skipping")
+			return
+		}
 	}
 
 	configValues := strings.Split(configEnv, ",")

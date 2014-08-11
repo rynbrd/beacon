@@ -47,6 +47,12 @@ location. Available parameters are:
   `port` is the port the service listens on, and protocol is either `tcp` or
   `udp`. The protocol defaults to `tcp` if omitted. If the container does not
   expose a port for a defined service then it will not be announced.
+- `tags` - A list of tags with which to filter the containers to announce
+  services for. Containers whose `tags-var` contains one of these tags will
+  have its services announced by Beacon.
+- `tags-var` - The name of an environment variable on a container to read tags
+  from. Tags may be used to filter containers to announce services for. The
+  variable contains a comma separated list of tags to flag the container with.
 - `hostname` - The hostname the services should be reachable at. This should be
   an address reachable by external clients of your service. Defaults to the
   system hostname.

@@ -24,6 +24,19 @@ func parseEnv(envVar string) (name string, value string) {
 	return
 }
 
+// Parse a tags variable value.
+func parseTags(tagsStr string) []string {
+	tags := []string{}
+	parts := strings.Split(tagsStr, ",")
+	for _, part := range parts {
+		tag := strings.TrimSpace(part)
+		if tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+	return tags
+}
+
 // Parse a port declaration. Protocol is assumed to be tcp if absent.
 func parsePort(portStr string) (port int, protocol string, err error) {
 	parts := strings.SplitN(portStr, "/", 2)

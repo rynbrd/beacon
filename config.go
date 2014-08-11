@@ -17,6 +17,7 @@ const (
 	DefaultLoggingConsole   = true
 	DefaultLoggingLevel     = simplelog.NOTICE
 	DefaultServiceVar       = "SERVICES"
+	DefaultServiceTagsVar   = "TAGS"
 	DefaultServiceHeartbeat = 30
 	DefaultServiceTtl       = 30
 	DefaultDockerURI        = "unix:///var/run/docker.sock"
@@ -75,6 +76,8 @@ func (cfg *LoggingConfig) SetYAML(tag string, data interface{}) bool {
 // Store service related configuration.
 type ServiceConfig struct {
 	Var       string
+	TagsVar   string
+	Tags      []string
 	Hostname  string
 	Heartbeat time.Duration
 	Ttl       time.Duration
@@ -84,6 +87,8 @@ type ServiceConfig struct {
 func DefaultServiceConfig() ServiceConfig {
 	return ServiceConfig{
 		DefaultServiceVar,
+		DefaultServiceTagsVar,
+		nil,
 		getHostname(""),
 		DefaultServiceHeartbeat * time.Second,
 		DefaultServiceTtl,
@@ -94,6 +99,8 @@ func DefaultServiceConfig() ServiceConfig {
 func (cfg *ServiceConfig) SetYAML(tag string, data interface{}) bool {
 	yamlcfg.AssertIsMap("service", data)
 	cfg.Var = yamlcfg.GetString(data, "var", DefaultServiceVar)
+	cfg.TagsVar = yamlcfg.GetString(data, "tags-var", DefaultServiceTagsVar)
+	cfg.Tags = yamlcfg.GetStringArray(data, "tags", nil)
 	cfg.Hostname = getHostname(yamlcfg.GetString(data, "hostname", ""))
 	cfg.Heartbeat = yamlcfg.GetDuration(data, "heartbeat", DefaultServiceHeartbeat*time.Second)
 	cfg.Ttl = yamlcfg.GetDuration(data, "ttl", DefaultServiceTtl*time.Second)
