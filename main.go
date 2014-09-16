@@ -74,7 +74,7 @@ Loop:
 			if err := ann.Announce(event); err == nil {
 				log.Info("event processed: %s", event)
 			} else {
-				log.Info("event error: %s: %s", event, err)
+				log.Error("event error: %s: %s", event, err)
 			}
 		case <-signals:
 			log.Notice("stopping")
