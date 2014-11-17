@@ -10,7 +10,7 @@ import (
 
 // Monitor docker for service changes and emit events.
 type ServiceMonitor struct {
-	client       dockerclient.DockerClient
+	client       *dockerclient.DockerClient
 	hostname     string
 	tags         map[string]bool
 	configVar    string
