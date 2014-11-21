@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/samalba/dockerclient"
+	"github.com/BlueDragonX/dockerclient"
 	"gopkg.in/BlueDragonX/simplelog.v1"
 	"strings"
 	"time"
@@ -127,7 +127,7 @@ func (mon *ServiceMonitor) removeContainer(serviceEvents chan ServiceEvent, cont
 func (mon *ServiceMonitor) poll(serviceEvents chan ServiceEvent) {
 	var err error
 	var containers []dockerclient.Container
-	if containers, err = mon.client.ListContainers(false, false); err != nil {
+	if containers, err = mon.client.ListContainers(false, false, ""); err != nil {
 		mon.log.Error("polling failed: %s", err)
 		return
 	}
