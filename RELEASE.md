@@ -1,3 +1,7 @@
+## v1.1.5
+* Use rolled-back dockerclient.
+* Support older Docker versions (API v1.10).
+
 ## v1.1.4
 * Use local fork of dockerclient to avoid even further breakage.
 
