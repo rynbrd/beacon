@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"gopkg.in/BlueDragonX/simplelog.v1"
 	"strconv"
+	"strings"
 )
 
 // Return true if the err is an EtcdError and has the given error code.
@@ -43,7 +44,11 @@ func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64, log *si
 
 // Create a new service announcer. Announce new services to the given etcd cluster.
 func NewServiceAnnouncer(urls []string, prefix string, ttl uint64, log *simplelog.Logger) *ServiceAnnouncer {
-	return newServiceAnnouncer(etcd.NewClient(urls), prefix, ttl, log)
+	cleanUrls := make([]string, len(urls))
+	for i, url := range urls {
+		cleanUrls[i] = strings.TrimRight(url, "/")
+	}
+	return newServiceAnnouncer(etcd.NewClient(cleanUrls), prefix, ttl, log)
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster over TLS.

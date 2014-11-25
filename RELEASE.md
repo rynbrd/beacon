@@ -1,3 +1,6 @@
+## v1.1.6
+* Auto-remove trailing slash from etcd URIs.
+
 ## v1.1.5
 * Use rolled-back dockerclient.
 * Support older Docker versions (API v1.10).
