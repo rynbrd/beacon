@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/BlueDragonX/go-etcd/etcd"
 	"gopkg.in/BlueDragonX/simplelog.v1"
 	"strconv"
 	"strings"
