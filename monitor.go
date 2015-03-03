@@ -167,6 +167,7 @@ func (mon *ServiceMonitor) Listen(serviceEvents chan ServiceEvent) error {
 
 	mon.poll(serviceEvents)
 	mon.client.StartMonitorEvents(cb)
+	pollTicker := time.Tick(mon.pollInterval)
 
 Loop:
 	for {
@@ -178,7 +179,7 @@ Loop:
 			case Remove:
 				mon.removeContainer(serviceEvents, e.ContainerId)
 			}
-		case <-time.After(mon.pollInterval):
+		case <-pollTicker:
 			mon.poll(serviceEvents)
 		case <-mon.stop:
 			break Loop
