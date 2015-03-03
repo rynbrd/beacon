@@ -1,7 +1,6 @@
 ## v1.1.7
-* Use time.Tick instead of time.After to poll. This fixes a bug where a flood
-  of docker events would cause poll to never execute which would in turn cause
-  the etcd TTLs to expire.
+* Use pinned go-etcd version.
+* Fix a bug where a Docker events prevent polling to occur.
 
 ## v1.1.6
 * Auto-remove trailing slash from etcd URIs.
