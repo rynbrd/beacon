@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"gopkg.in/BlueDragonX/go-log.v0"
 	"gopkg.in/BlueDragonX/go-settings.v0"
-	"gopkg.in/BlueDragonX/simplelog.v1"
 	"os"
 	"os/signal"
 	"syscall"
 )
+
+var logger *log.Logger = log.NewOrExit()
 
 func main() {
 	options := ParseOptionsOrExit(os.Args)
@@ -26,28 +28,39 @@ func main() {
 	if options.Prefix != "" {
 		config.Set("etcd.prefix", options.Prefix)
 	}
-
-	var log *simplelog.Logger
-	var mon *ServiceMonitor
-	var ann *ServiceAnnouncer
-	var err error
-
-	if log, err = simplelog.NewLogger(simplelog.CONSOLE, "beacon"); err != nil {
-		fmt.Println("failed to create logger:", err)
-		os.Exit(1)
+	if options.LogTarget != "" {
+		config.Set("logging.target", options.LogTarget)
+	}
+	if options.LogLevel != "" {
+		config.Set("logging.level", options.LogLevel)
 	}
 
-	log.SetLevel(simplelog.StringToLevel(config.StringDflt("logging.level", "info")))
-	log.Notice("starting")
+	// configure the logger
+	if logTarget, err := config.String("logging.target"); err == nil {
+		if logTargetObj, err := log.NewTarget(logTarget); err == nil {
+			logger.SetTarget(logTargetObj)
+		} else {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			os.Exit(1)
+		}
+	}
+	if logLevel, err := config.String("logging.level"); err == nil {
+		logger.SetLevel(log.NewLevel(logLevel))
+	}
+
+	// start the system
+	var err error
+	var mon *ServiceMonitor
+	var ann *ServiceAnnouncer
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	if mon, err = ConfigServiceMonitor(config, log); err != nil {
-		log.Fatal("monitor failed: %s", err)
+	if mon, err = ConfigServiceMonitor(config); err != nil {
+		logger.Fatalf("monitor failed: %s", err)
 	}
-	if ann, err = ConfigServiceAnnouncer(config, log); err != nil {
-		log.Fatal("announcer failed: %s", err)
+	if ann, err = ConfigServiceAnnouncer(config); err != nil {
+		logger.Fatalf("announcer failed: %s", err)
 	}
 
 	events := make(chan *ServiceEvent, 1)
@@ -55,12 +68,12 @@ func main() {
 
 	go func() {
 		if err = mon.Listen(events); err != nil {
-			log.Fatal("failed to start monitor: %s", err)
+			logger.Fatalf("failed to start monitor: %s", err)
 		}
 		finish <- true
 	}()
 
-	log.Notice("started")
+	logger.Info("started")
 Loop:
 	for {
 		select {
@@ -69,18 +82,17 @@ Loop:
 				break Loop
 			}
 			if err := ann.Announce(event); err == nil {
-				log.Info("event processed: %s", event)
+				logger.Debugf("event processed: %+v", event)
 			} else {
-				log.Error("event error: %s: %s", event, err)
+				logger.Errorf("event error: %+v: %s", event, err)
 			}
 		case <-signals:
-			log.Notice("stopping")
 			if err = mon.Stop(); err != nil {
-				log.Warn("%s", err)
+				logger.Errorf("%s", err)
 			}
 		}
 	}
 
 	<-finish
-	log.Notice("stopped")
+	logger.Info("stopped")
 }

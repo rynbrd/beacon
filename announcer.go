@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BlueDragonX/go-etcd/etcd"
-	"gopkg.in/BlueDragonX/simplelog.v1"
 	"strconv"
 	"strings"
 )
@@ -22,10 +21,9 @@ type ServiceAnnouncer struct {
 	client *etcd.Client
 	prefix string
 	ttl    uint64
-	log    *simplelog.Logger
 }
 
-func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64, log *simplelog.Logger) *ServiceAnnouncer {
+func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64) *ServiceAnnouncer {
 	if prefix != "" {
 		if prefix[0] != '/' {
 			prefix = "/" + prefix
@@ -38,24 +36,23 @@ func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64, log *si
 	ann.client = client
 	ann.prefix = prefix
 	ann.ttl = ttl
-	ann.log = log
 	return ann
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster.
-func NewServiceAnnouncer(urls []string, prefix string, ttl uint64, log *simplelog.Logger) *ServiceAnnouncer {
+func NewServiceAnnouncer(urls []string, prefix string, ttl uint64) *ServiceAnnouncer {
 	cleanUrls := make([]string, len(urls))
 	for i, url := range urls {
 		cleanUrls[i] = strings.TrimRight(url, "/")
 	}
-	return newServiceAnnouncer(etcd.NewClient(cleanUrls), prefix, ttl, log)
+	return newServiceAnnouncer(etcd.NewClient(cleanUrls), prefix, ttl)
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster over TLS.
-func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl uint64, log *simplelog.Logger) (ann *ServiceAnnouncer, err error) {
+func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl uint64) (ann *ServiceAnnouncer, err error) {
 	var client *etcd.Client
 	if client, err = etcd.NewTLSClient(urls, cert, key, caCert); err == nil {
-		ann = newServiceAnnouncer(client, prefix, ttl, log)
+		ann = newServiceAnnouncer(client, prefix, ttl)
 	}
 	return
 }
@@ -112,9 +109,9 @@ func (ann *ServiceAnnouncer) increment(key string) (value int, err error) {
 	}
 
 	if err == nil {
-		ann.log.Debug("increment %s to %d", key, value)
+		logger.Debugf("increment %s to %d", key, value)
 	} else {
-		ann.log.Error("failed to increment %s: %s", key, err)
+		logger.Errorf("failed to increment %s: %s", key, err)
 	}
 	return
 }
@@ -143,9 +140,9 @@ func (ann *ServiceAnnouncer) setValue(svc *Service, root, name, value string) (e
 	key := fmt.Sprintf("%v/%v", root, name)
 	_, err = ann.client.Set(key, value, 0)
 	if err == nil {
-		ann.log.Debug("etcd set '%s' = '%s'", key, value)
+		logger.Debugf("etcd set '%s' = '%s'", key, value)
 	} else {
-		ann.log.Error("etcd failed to set '%s' = '%s'", key, value)
+		logger.Errorf("etcd failed to set '%s' = '%s'", key, value)
 	}
 	return
 }
@@ -236,9 +233,9 @@ func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
 		}
 	}
 	if err == nil {
-		ann.log.Debug("etcd delete '%s'", key)
+		logger.Debugf("etcd delete '%s'", key)
 	} else {
-		ann.log.Debug("etcd delete '%s' failed: %s", key, err)
+		logger.Debugf("etcd delete '%s' failed: %s", key, err)
 	}
 	return
 }

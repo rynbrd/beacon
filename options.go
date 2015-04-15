@@ -21,19 +21,18 @@ func (strs *stringsOpt) Set(value string) error {
 
 // Store values retrieved from the cli.
 type Options struct {
-	Config string
-	Var    string
-	Etcd   []string
-	Docker string
-	Prefix string
+	Config    string
+	Var       string
+	Etcd      []string
+	Docker    string
+	Prefix    string
+	LogTarget string
+	LogLevel  string
 }
 
 func ParseOptionsOrExit(args []string) *Options {
-	var config string
-	var envVar string
+	var config, envVar, docker, prefix, logTarget, logLevel string
 	var etcd stringsOpt
-	var docker string
-	var prefix string
 
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 	flags.StringVar(&config, "config", DefaultConfigFile, "The path to the config file.")
@@ -41,13 +40,17 @@ func ParseOptionsOrExit(args []string) *Options {
 	flags.Var(&etcd, "etcd", "The etcd endpoint. May be provided multiple times.")
 	flags.StringVar(&docker, "docker", "", "The Docker endpoint.")
 	flags.StringVar(&prefix, "prefix", "", "A prefix to prepend to all etcd key paths.")
+	flags.StringVar(&logTarget, "log-target", "", "The target to log to.")
+	flags.StringVar(&logLevel, "log-level", "", "The level of logs to log.")
 	flags.Parse(args[1:])
 
 	return &Options{
-		Config: config,
-		Var:    envVar,
-		Etcd:   []string(etcd),
-		Docker: docker,
-		Prefix: prefix,
+		Config:    config,
+		Var:       envVar,
+		Etcd:      []string(etcd),
+		Docker:    docker,
+		Prefix:    prefix,
+		LogTarget: logTarget,
+		LogLevel:  logLevel,
 	}
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"gopkg.in/BlueDragonX/go-settings.v0"
-	"gopkg.in/BlueDragonX/simplelog.v1"
 	"os"
 	"strings"
 	"time"
@@ -22,17 +21,17 @@ var (
 	DefaultTLSCACert        string        = ""
 )
 
-func ConfigServiceMonitor(config *settings.Settings, log *simplelog.Logger) (*ServiceMonitor, error) {
+func ConfigServiceMonitor(config *settings.Settings) (*ServiceMonitor, error) {
 	docker := config.StringDflt("docker.uri", DefaultDockerURI)
 	hostname := config.StringDflt("service.hostname", getHostname())
 	tags := config.StringArrayDflt("service.tags", []string{})
 	envVar := config.StringDflt("service.var", DefaultServiceVar)
 	tagsVar := config.StringDflt("service.tags-var", DefaultServiceTagsVar)
 	heartbeat := config.DurationDflt("service.heartbeat", DefaultServiceHeartbeat)
-	return NewServiceMonitor(docker, hostname, tags, envVar, tagsVar, heartbeat, log)
+	return NewServiceMonitor(docker, hostname, tags, envVar, tagsVar, heartbeat)
 }
 
-func ConfigServiceAnnouncer(config *settings.Settings, log *simplelog.Logger) (*ServiceAnnouncer, error) {
+func ConfigServiceAnnouncer(config *settings.Settings) (*ServiceAnnouncer, error) {
 	uris := config.StringArrayDflt("uris", []string{})
 	if len(uris) == 0 {
 		uris = DefaultEtcdURIs
@@ -59,9 +58,9 @@ func ConfigServiceAnnouncer(config *settings.Settings, log *simplelog.Logger) (*
 		if !fileIsReadable(tlsCACert) {
 			return nil, errors.New("invalid etcd.tls-ca-cert: file is not readable")
 		}
-		return NewTLSServiceAnnouncer(uris, tlsCert, tlsKey, tlsCACert, prefix, ttlSeconds, log)
+		return NewTLSServiceAnnouncer(uris, tlsCert, tlsKey, tlsCACert, prefix, ttlSeconds)
 	} else {
-		ann := NewServiceAnnouncer(uris, prefix, ttlSeconds, log)
+		ann := NewServiceAnnouncer(uris, prefix, ttlSeconds)
 		return ann, nil
 	}
 }

@@ -86,10 +86,8 @@ This section configures the connection to etcd. Available parameters are:
 ### logging ###
 This section controls how Beacon outputs logging. Available parameters are:
 
-- `console` - Whether or not to log to the console. Defaults to true.
-- `syslog` - Whether or not to log to syslog. Defaults to false.
-- `level` - The log level. Valid values are `debug`, `info`, `notice`, `warn`,
-  `error`, or `fatal`.
+- `target` - The target to log to. Defaults to `stderr`.
+- `level` - The log level. Valid values are `debug`, `info`, or `error`.
 
 Etcd Keys
 ---------
