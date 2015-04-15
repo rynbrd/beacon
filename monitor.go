@@ -100,11 +100,11 @@ func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, contain
 
 		oldSvc, update := mon.services[svc.Hash()]
 		if update {
-			serviceEvents <- ServiceEvent{Heartbeat, svc}
+			serviceEvents <- ServiceEvent{ServiceHeartbeat, svc}
 		} else if update && *svc == *oldSvc {
-			serviceEvents <- ServiceEvent{Update, svc}
+			serviceEvents <- ServiceEvent{ServiceUpdate, svc}
 		} else {
-			serviceEvents <- ServiceEvent{Add, svc}
+			serviceEvents <- ServiceEvent{ServiceAdd, svc}
 		}
 		mon.services[svc.Hash()] = svc
 	}
@@ -119,7 +119,7 @@ func (mon *ServiceMonitor) removeContainer(serviceEvents chan ServiceEvent, cont
 	}
 
 	for _, hash := range remove {
-		serviceEvents <- ServiceEvent{Remove, mon.services[hash]}
+		serviceEvents <- ServiceEvent{ServiceRemove, mon.services[hash]}
 		delete(mon.services, hash)
 	}
 }
@@ -159,9 +159,9 @@ func (mon *ServiceMonitor) Listen(serviceEvents chan ServiceEvent) error {
 
 	cb := func(e *dockerclient.Event, args ...interface{}) {
 		if e.Status == "start" {
-			containerEvents <- ContainerEvent{Add, e.Id}
+			containerEvents <- ContainerEvent{ContainerAdd, e.Id}
 		} else if e.Status == "die" {
-			containerEvents <- ContainerEvent{Remove, e.Id}
+			containerEvents <- ContainerEvent{ContainerRemove, e.Id}
 		}
 	}
 
@@ -173,10 +173,10 @@ Loop:
 	for {
 		select {
 		case e := <-containerEvents:
-			switch e.State {
-			case Add:
+			switch e.Action {
+			case ContainerAdd:
 				mon.addContainer(serviceEvents, e.ContainerId)
-			case Remove:
+			case ContainerRemove:
 				mon.removeContainer(serviceEvents, e.ContainerId)
 			}
 		case <-pollTicker:
@@ -188,7 +188,7 @@ Loop:
 
 	mon.client.StopAllMonitorEvents()
 	for _, service := range mon.services {
-		serviceEvents <- ServiceEvent{Remove, service}
+		serviceEvents <- ServiceEvent{ServiceRemove, service}
 	}
 	close(serviceEvents)
 

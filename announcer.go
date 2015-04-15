@@ -244,12 +244,12 @@ func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
 }
 
 func (ann *ServiceAnnouncer) Announce(event ServiceEvent) (err error) {
-	switch event.State {
-	case Add:
+	switch event.Action {
+	case ServiceAdd:
 		err = ann.addService(event.Service)
-	case Heartbeat:
+	case ServiceHeartbeat:
 		err = ann.heartbeatService(event.Service)
-	case Remove:
+	case ServiceRemove:
 		err = ann.removeService(event.Service)
 	}
 	return

@@ -1,27 +1,28 @@
 package main
 
-import (
-	"fmt"
+type ContainerAction int
+type ServiceAction int
+
+const (
+	// Container event actions.
+	ContainerAdd ContainerAction = iota
+	ContainerRemove
 )
 
 const (
-	// Event states.
-	Add       = "add"
-	Remove    = "remove"
-	Update    = "update"
-	Heartbeat = "heartbeat"
+	// Service event actions.
+	ServiceAdd ServiceAction = iota
+	ServiceRemove
+	ServiceUpdate
+	ServiceHeartbeat
 )
 
 type ContainerEvent struct {
-	State       string
+	Action      ContainerAction
 	ContainerId string
 }
 
 type ServiceEvent struct {
-	State   string
+	Action  ServiceAction
 	Service *Service
-}
-
-func (e ServiceEvent) String() string {
-	return fmt.Sprintf("%v %s", e.State, e.Service)
 }
