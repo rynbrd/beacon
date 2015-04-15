@@ -98,7 +98,7 @@ file. The service paths are structured as follows:
 
     /<service_name>/<container_id>/<keys>
 
-The following keys are set fore each service/container:
+The following keys are set for each service/container:
 
 - `container-name` - The hostname of the container the service is running on.
 - `container-port` - The port the container exposes for this service.
