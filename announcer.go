@@ -243,7 +243,7 @@ func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
 	return
 }
 
-func (ann *ServiceAnnouncer) Announce(event ServiceEvent) (err error) {
+func (ann *ServiceAnnouncer) Announce(event *ServiceEvent) (err error) {
 	switch event.Action {
 	case ServiceAdd:
 		err = ann.addService(event.Service)

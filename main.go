@@ -53,7 +53,7 @@ func main() {
 		ann = NewServiceAnnouncer(cfg.Etcd.URIs, cfg.Etcd.Prefix, ttl, log)
 	}
 
-	events := make(chan ServiceEvent, 1)
+	events := make(chan *ServiceEvent, 1)
 	finish := make(chan bool)
 
 	go func() {

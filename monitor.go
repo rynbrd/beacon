@@ -47,7 +47,7 @@ func NewServiceMonitor(url, hostname string, tags []string, configVar, tagsVar s
 	return
 }
 
-func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, containerId string) {
+func (mon *ServiceMonitor) addContainer(serviceEvents chan *ServiceEvent, containerId string) {
 	errorFmt := "container %.12s: %s"
 	var err error
 	var containerInfo *dockerclient.ContainerInfo
@@ -100,17 +100,17 @@ func (mon *ServiceMonitor) addContainer(serviceEvents chan ServiceEvent, contain
 
 		oldSvc, update := mon.services[svc.Hash()]
 		if update {
-			serviceEvents <- ServiceEvent{ServiceHeartbeat, svc}
+			serviceEvents <- &ServiceEvent{ServiceHeartbeat, svc}
 		} else if update && *svc == *oldSvc {
-			serviceEvents <- ServiceEvent{ServiceUpdate, svc}
+			serviceEvents <- &ServiceEvent{ServiceUpdate, svc}
 		} else {
-			serviceEvents <- ServiceEvent{ServiceAdd, svc}
+			serviceEvents <- &ServiceEvent{ServiceAdd, svc}
 		}
 		mon.services[svc.Hash()] = svc
 	}
 }
 
-func (mon *ServiceMonitor) removeContainer(serviceEvents chan ServiceEvent, containerId string) {
+func (mon *ServiceMonitor) removeContainer(serviceEvents chan *ServiceEvent, containerId string) {
 	remove := []string{}
 	for hash, svc := range mon.services {
 		if svc.ContainerId == containerId {
@@ -119,12 +119,12 @@ func (mon *ServiceMonitor) removeContainer(serviceEvents chan ServiceEvent, cont
 	}
 
 	for _, hash := range remove {
-		serviceEvents <- ServiceEvent{ServiceRemove, mon.services[hash]}
+		serviceEvents <- &ServiceEvent{ServiceRemove, mon.services[hash]}
 		delete(mon.services, hash)
 	}
 }
 
-func (mon *ServiceMonitor) poll(serviceEvents chan ServiceEvent) {
+func (mon *ServiceMonitor) poll(serviceEvents chan *ServiceEvent) {
 	var err error
 	var containers []dockerclient.Container
 	if containers, err = mon.client.ListContainers(false); err != nil {
@@ -148,20 +148,20 @@ func (mon *ServiceMonitor) poll(serviceEvents chan ServiceEvent) {
 	mon.containers = containerIds
 }
 
-func (mon *ServiceMonitor) Listen(serviceEvents chan ServiceEvent) error {
+func (mon *ServiceMonitor) Listen(serviceEvents chan *ServiceEvent) error {
 	if !stateListening(&mon.state) {
 		return errors.New("already listening")
 	}
 
 	mon.containers = make(map[string]bool)
 	mon.services = make(map[string]*Service)
-	containerEvents := make(chan ContainerEvent, 1)
+	containerEvents := make(chan *ContainerEvent, 1)
 
 	cb := func(e *dockerclient.Event, args ...interface{}) {
 		if e.Status == "start" {
-			containerEvents <- ContainerEvent{ContainerAdd, e.Id}
+			containerEvents <- &ContainerEvent{ContainerAdd, e.Id}
 		} else if e.Status == "die" {
-			containerEvents <- ContainerEvent{ContainerRemove, e.Id}
+			containerEvents <- &ContainerEvent{ContainerRemove, e.Id}
 		}
 	}
 
@@ -188,7 +188,7 @@ Loop:
 
 	mon.client.StopAllMonitorEvents()
 	for _, service := range mon.services {
-		serviceEvents <- ServiceEvent{ServiceRemove, service}
+		serviceEvents <- &ServiceEvent{ServiceRemove, service}
 	}
 	close(serviceEvents)
 
