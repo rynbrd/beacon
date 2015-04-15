@@ -113,7 +113,7 @@ There are two index keys which are incremented after services are updated:
 
 License
 -------
-Copyright (c) 2014 Ryan Bourgeois. Licensed under BSD-Modified. See the
+Copyright (c) 2015 Ryan Bourgeois. Licensed under BSD-Modified. See the
 [LICENSE][2] file for a copy of the license.
 
 [1]: https://raw.githubusercontent.com/BlueDragonX/beacon/master/config_example.yml "Beacon Example Config"
