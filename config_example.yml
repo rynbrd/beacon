@@ -6,12 +6,12 @@ service:
   # Refresh the service in etcd every two minutes.
   heartbeat: 120
 
-  # Expire the service after 30 seconds if no heartbeat has been received.
-  ttl: 30
-
 docker:
   # connect to docker here
   uri: unix:///var/run/docker.sock
+
+  # Expire the service after 30 seconds if no heartbeat has been received.
+  ttl: 30
 
 etcd:
   # connect to etcd here
@@ -21,4 +21,4 @@ etcd:
 
 logging:
   # enable syslog
-  syslog: true
+  target: syslog
