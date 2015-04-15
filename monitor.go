@@ -8,7 +8,7 @@ import (
 )
 
 // Monitor docker for service changes and emit events.
-type ServiceMonitor struct {
+type Monitor struct {
 	client       *dockerclient.DockerClient
 	hostname     string
 	tags         map[string]bool
@@ -23,8 +23,8 @@ type ServiceMonitor struct {
 
 // Create a new service monitor listening on the given URL. Look for service
 // config in the Docker environment variable names configVar.
-func NewServiceMonitor(url, hostname string, tags []string, configVar, tagsVar string, pollInterval time.Duration) (mon *ServiceMonitor, err error) {
-	mon = &ServiceMonitor{}
+func NewMonitor(url, hostname string, tags []string, configVar, tagsVar string, pollInterval time.Duration) (mon *Monitor, err error) {
+	mon = &Monitor{}
 	mon.client, err = dockerclient.NewDockerClient(url, nil)
 	mon.hostname = hostname
 	mon.tags = make(map[string]bool)
@@ -44,7 +44,7 @@ func NewServiceMonitor(url, hostname string, tags []string, configVar, tagsVar s
 	return
 }
 
-func (mon *ServiceMonitor) addContainer(serviceEvents chan *ServiceEvent, containerId string) {
+func (mon *Monitor) addContainer(serviceEvents chan *ServiceEvent, containerId string) {
 	errorFmt := "container %.12s: %s"
 	var err error
 	var containerInfo *dockerclient.ContainerInfo
@@ -107,7 +107,7 @@ func (mon *ServiceMonitor) addContainer(serviceEvents chan *ServiceEvent, contai
 	}
 }
 
-func (mon *ServiceMonitor) removeContainer(serviceEvents chan *ServiceEvent, containerId string) {
+func (mon *Monitor) removeContainer(serviceEvents chan *ServiceEvent, containerId string) {
 	remove := []string{}
 	for hash, svc := range mon.services {
 		if svc.ContainerId == containerId {
@@ -121,7 +121,7 @@ func (mon *ServiceMonitor) removeContainer(serviceEvents chan *ServiceEvent, con
 	}
 }
 
-func (mon *ServiceMonitor) poll(serviceEvents chan *ServiceEvent) {
+func (mon *Monitor) poll(serviceEvents chan *ServiceEvent) {
 	var err error
 	var containers []dockerclient.Container
 	if containers, err = mon.client.ListContainers(false); err != nil {
@@ -145,7 +145,7 @@ func (mon *ServiceMonitor) poll(serviceEvents chan *ServiceEvent) {
 	mon.containers = containerIds
 }
 
-func (mon *ServiceMonitor) Listen(serviceEvents chan *ServiceEvent) error {
+func (mon *Monitor) Listen(serviceEvents chan *ServiceEvent) error {
 	if !stateListening(&mon.state) {
 		return errors.New("already listening")
 	}
@@ -193,7 +193,7 @@ Loop:
 	return nil
 }
 
-func (mon *ServiceMonitor) Stop() error {
+func (mon *Monitor) Stop() error {
 	if !stateStopping(&mon.state) {
 		return errors.New("not listening")
 	}

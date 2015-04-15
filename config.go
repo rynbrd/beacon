@@ -21,17 +21,17 @@ var (
 	DefaultTLSCACert        string        = ""
 )
 
-func ConfigServiceMonitor(config *settings.Settings) (*ServiceMonitor, error) {
+func ConfigMonitor(config *settings.Settings) (*Monitor, error) {
 	docker := config.StringDflt("docker.uri", DefaultDockerURI)
 	hostname := config.StringDflt("service.hostname", getHostname())
 	tags := config.StringArrayDflt("service.tags", []string{})
 	envVar := config.StringDflt("service.var", DefaultServiceVar)
 	tagsVar := config.StringDflt("service.tags-var", DefaultServiceTagsVar)
 	heartbeat := config.DurationDflt("service.heartbeat", DefaultServiceHeartbeat)
-	return NewServiceMonitor(docker, hostname, tags, envVar, tagsVar, heartbeat)
+	return NewMonitor(docker, hostname, tags, envVar, tagsVar, heartbeat)
 }
 
-func ConfigServiceAnnouncer(config *settings.Settings) (*ServiceAnnouncer, error) {
+func ConfigAnnouncer(config *settings.Settings) (*Announcer, error) {
 	uris := config.StringArrayDflt("uris", []string{})
 	if len(uris) == 0 {
 		uris = DefaultEtcdURIs
@@ -58,9 +58,9 @@ func ConfigServiceAnnouncer(config *settings.Settings) (*ServiceAnnouncer, error
 		if !fileIsReadable(tlsCACert) {
 			return nil, errors.New("invalid etcd.tls-ca-cert: file is not readable")
 		}
-		return NewTLSServiceAnnouncer(uris, tlsCert, tlsKey, tlsCACert, prefix, ttlSeconds)
+		return NewTLSAnnouncer(uris, tlsCert, tlsKey, tlsCACert, prefix, ttlSeconds)
 	} else {
-		ann := NewServiceAnnouncer(uris, prefix, ttlSeconds)
+		ann := NewAnnouncer(uris, prefix, ttlSeconds)
 		return ann, nil
 	}
 }

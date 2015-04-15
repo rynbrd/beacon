@@ -17,13 +17,13 @@ func checkEtcdErrorCode(err error, code int) bool {
 	return false
 }
 
-type ServiceAnnouncer struct {
+type Announcer struct {
 	client *etcd.Client
 	prefix string
 	ttl    uint64
 }
 
-func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64) *ServiceAnnouncer {
+func newAnnouncer(client *etcd.Client, prefix string, ttl uint64) *Announcer {
 	if prefix != "" {
 		if prefix[0] != '/' {
 			prefix = "/" + prefix
@@ -32,7 +32,7 @@ func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64) *Servic
 			prefix = prefix[:len(prefix)-1]
 		}
 	}
-	ann := &ServiceAnnouncer{}
+	ann := &Announcer{}
 	ann.client = client
 	ann.prefix = prefix
 	ann.ttl = ttl
@@ -40,25 +40,25 @@ func newServiceAnnouncer(client *etcd.Client, prefix string, ttl uint64) *Servic
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster.
-func NewServiceAnnouncer(urls []string, prefix string, ttl uint64) *ServiceAnnouncer {
+func NewAnnouncer(urls []string, prefix string, ttl uint64) *Announcer {
 	cleanUrls := make([]string, len(urls))
 	for i, url := range urls {
 		cleanUrls[i] = strings.TrimRight(url, "/")
 	}
-	return newServiceAnnouncer(etcd.NewClient(cleanUrls), prefix, ttl)
+	return newAnnouncer(etcd.NewClient(cleanUrls), prefix, ttl)
 }
 
 // Create a new service announcer. Announce new services to the given etcd cluster over TLS.
-func NewTLSServiceAnnouncer(urls []string, cert, key, caCert, prefix string, ttl uint64) (ann *ServiceAnnouncer, err error) {
+func NewTLSAnnouncer(urls []string, cert, key, caCert, prefix string, ttl uint64) (ann *Announcer, err error) {
 	var client *etcd.Client
 	if client, err = etcd.NewTLSClient(urls, cert, key, caCert); err == nil {
-		ann = newServiceAnnouncer(client, prefix, ttl)
+		ann = newAnnouncer(client, prefix, ttl)
 	}
 	return
 }
 
 // Increment an index counter in etcd. Replace or create the key if it's not a valid int.
-func (ann *ServiceAnnouncer) increment(key string) (value int, err error) {
+func (ann *Announcer) increment(key string) (value int, err error) {
 
 	createKey := func() (value int, err error) {
 		_, err = ann.client.Set(key, "1", 0)
@@ -117,7 +117,7 @@ func (ann *ServiceAnnouncer) increment(key string) (value int, err error) {
 }
 
 // Increment all indexes.
-func (ann *ServiceAnnouncer) incrementIndexes(svc *Service) error {
+func (ann *Announcer) incrementIndexes(svc *Service) error {
 	indexes := []string{
 		fmt.Sprintf("%v/_index", ann.prefix),
 		fmt.Sprintf("%v/%v/_index", ann.prefix, svc.Name),
@@ -132,11 +132,11 @@ func (ann *ServiceAnnouncer) incrementIndexes(svc *Service) error {
 }
 
 // Return the path to the directory for a service.
-func (ann *ServiceAnnouncer) getServicePath(svc *Service) string {
+func (ann *Announcer) getServicePath(svc *Service) string {
 	return fmt.Sprintf("%v/%v/%v", ann.prefix, svc.Name, svc.ContainerId)
 }
 
-func (ann *ServiceAnnouncer) setValue(svc *Service, root, name, value string) (err error) {
+func (ann *Announcer) setValue(svc *Service, root, name, value string) (err error) {
 	key := fmt.Sprintf("%v/%v", root, name)
 	_, err = ann.client.Set(key, value, 0)
 	if err == nil {
@@ -147,7 +147,7 @@ func (ann *ServiceAnnouncer) setValue(svc *Service, root, name, value string) (e
 	return
 }
 
-func (ann *ServiceAnnouncer) addService(svc *Service) (err error) {
+func (ann *Announcer) addService(svc *Service) (err error) {
 	root := ann.getServicePath(svc)
 	if _, err = ann.client.SetDir(root, ann.ttl); err != nil {
 		if checkEtcdErrorCode(err, 102) {
@@ -178,7 +178,7 @@ func (ann *ServiceAnnouncer) addService(svc *Service) (err error) {
 	return
 }
 
-func (ann *ServiceAnnouncer) heartbeatService(svc *Service) (err error) {
+func (ann *Announcer) heartbeatService(svc *Service) (err error) {
 	root := ann.getServicePath(svc)
 	_, err = ann.client.UpdateDir(root, ann.ttl)
 	if checkEtcdErrorCode(err, 100) {
@@ -187,7 +187,7 @@ func (ann *ServiceAnnouncer) heartbeatService(svc *Service) (err error) {
 	return
 }
 
-func (ann *ServiceAnnouncer) cleanService(svc *Service) (err error) {
+func (ann *Announcer) cleanService(svc *Service) (err error) {
 	svcKey := fmt.Sprintf("%v/%v", ann.prefix, svc.Name)
 	indexKey := fmt.Sprintf("%v/index", svcKey)
 
@@ -222,7 +222,7 @@ func (ann *ServiceAnnouncer) cleanService(svc *Service) (err error) {
 	return
 }
 
-func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
+func (ann *Announcer) removeService(svc *Service) (err error) {
 	root := ann.getServicePath(svc)
 	key := fmt.Sprintf("%v/%v", ann.prefix, svc.Name)
 	_, err = ann.client.Delete(root, true)
@@ -240,7 +240,7 @@ func (ann *ServiceAnnouncer) removeService(svc *Service) (err error) {
 	return
 }
 
-func (ann *ServiceAnnouncer) Announce(event *ServiceEvent) (err error) {
+func (ann *Announcer) Announce(event *ServiceEvent) (err error) {
 	switch event.Action {
 	case ServiceAdd:
 		err = ann.addService(event.Service)

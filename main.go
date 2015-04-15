@@ -50,16 +50,16 @@ func main() {
 
 	// start the system
 	var err error
-	var mon *ServiceMonitor
-	var ann *ServiceAnnouncer
+	var mon *Monitor
+	var ann *Announcer
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	if mon, err = ConfigServiceMonitor(config); err != nil {
+	if mon, err = ConfigMonitor(config); err != nil {
 		logger.Fatalf("monitor failed: %s", err)
 	}
-	if ann, err = ConfigServiceAnnouncer(config); err != nil {
+	if ann, err = ConfigAnnouncer(config); err != nil {
 		logger.Fatalf("announcer failed: %s", err)
 	}
 
