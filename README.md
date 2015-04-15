@@ -29,12 +29,16 @@ You can use the go command to get and install the package:
 
 Configuring 
 -----------
-The beacon binary takes one option: `-config`. This takes as an argument the
-path to the config file to load. This defaults to `config.yml` in the current
-directory. An [example config file][1] is available.
+Beacon takes a few commandline options. These are:
 
-The config file itself is YAML. It is structured into four sections:
-`service`, `docker`, `etcd`, and `logging`.
+`config` - The path to the config file. Defaults to /etc/beacon.yml.
+`var` - The container environment variable which holds the hosted services value.
+`etcd` - The etcd endpoint. May be provided multiple times.
+`docker` - The Docker endpoint.
+`prefix` - A prefix to prepend to all etcd key paths.
+
+The config file itself is YAML. It is structured into sections `service`,
+`docker`, `etcd`, and `logging`. Go [here][1] for an example.
 
 ### service ###
 This section defines service configuration including timeouts and service
@@ -57,8 +61,6 @@ location. Available parameters are:
   an address reachable by external clients of your service. Defaults to the
   system hostname.
 - `heartbeat` - How often (in seconds) services will be polled. Defaults to 30.
-- `ttl` - How long (in seconds) a service should remain active after receiving
-  a heartbeat. Defaults to 30. The etcd TTL is calculated as `heartbeat + ttl`.
 
 ### docker ###
 This section configures the connection to Docker. Available parameters are:
@@ -72,6 +74,8 @@ This section configures the connection to etcd. Available parameters are:
 - `uris` - Connect to multiple etcd nodes. Used as an alternative to `uri` when
   redundancy is called for.
 - `prefix` - etcd key paths will be prefixed with this value. Defaults to `beacon`.
+- `ttl` - How long (in seconds) a service should remain in etcd after missing a
+  heartbeat. Defaults to 30. The etcd TTL is calculated as `heartbeat + ttl`.
 - `tls-key` - The path to the TLS private key to use when connecting. Must be
   provided to enable TLS.
 - `tls-cert` - The path to the TLS certificate to use when connecting. Must be
