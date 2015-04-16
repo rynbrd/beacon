@@ -1,3 +1,9 @@
+## v2.0.0
+* Simplify etcd directory layout.
+* New configuration layout.
+* Use go-log for logging.
+* Use go-settings for configuration.
+
 ## v1.1.7
 * Use pinned go-etcd version.
 * Fix a bug where a Docker events prevent polling to occur.

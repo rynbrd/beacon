@@ -11,22 +11,22 @@ import (
 
 var logger *log.Logger = log.NewOrExit()
 
-func main() {
-	options := ParseOptionsOrExit(os.Args)
+func configure(args []string) *settings.Settings {
+	options := ParseOptionsOrExit(args)
 	config := settings.LoadOrExit(options.Config)
 
 	// set config values from cli options
-	if options.Var != "" {
-		config.Set("service.var", options.Var)
+	if options.EnvVar != "" {
+		config.Set("beacon.env-var", options.EnvVar)
 	}
 	if len(options.Etcd) > 0 {
 		config.Set("etcd.uris", options.Etcd)
 	}
-	if options.Docker != "" {
-		config.Set("docker.uri", options.Docker)
-	}
 	if options.Prefix != "" {
 		config.Set("etcd.prefix", options.Prefix)
+	}
+	if options.Docker != "" {
+		config.Set("docker.uri", options.Docker)
 	}
 	if options.LogTarget != "" {
 		config.Set("logging.target", options.LogTarget)
@@ -47,52 +47,21 @@ func main() {
 	if logLevel, err := config.String("logging.level"); err == nil {
 		logger.SetLevel(log.NewLevel(logLevel))
 	}
+	return config
+}
 
-	// start the system
-	var err error
-	var mon *Monitor
-	var ann *Announcer
+func main() {
+	config := configure(os.Args)
+	beacon := ConfigBeacon(config)
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	if mon, err = ConfigMonitor(config); err != nil {
-		logger.Fatalf("monitor failed: %s", err)
-	}
-	if ann, err = ConfigAnnouncer(config); err != nil {
-		logger.Fatalf("announcer failed: %s", err)
-	}
-
-	events := make(chan *ServiceEvent, 1)
-	finish := make(chan bool)
-
 	go func() {
-		if err = mon.Listen(events); err != nil {
-			logger.Fatalf("failed to start monitor: %s", err)
+		<-signals
+		if err := beacon.Close(); err != nil {
+			logger.Fatal(err.Error())
 		}
-		finish <- true
 	}()
-
-	logger.Info("started")
-Loop:
-	for {
-		select {
-		case event, ok := <-events:
-			if !ok {
-				break Loop
-			}
-			if err := ann.Announce(event); err == nil {
-				logger.Debugf("event processed: %+v", event)
-			} else {
-				logger.Errorf("event error: %+v: %s", event, err)
-			}
-		case <-signals:
-			if err = mon.Stop(); err != nil {
-				logger.Errorf("%s", err)
-			}
-		}
-	}
-
-	<-finish
-	logger.Info("stopped")
+	beacon.Run()
 }

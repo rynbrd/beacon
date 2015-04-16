@@ -1,67 +1,82 @@
 package main
 
 import (
-	"errors"
 	"gopkg.in/BlueDragonX/go-settings.v0"
 	"os"
-	"strings"
 	"time"
 )
 
 var (
-	DefaultServiceVar       string        = "SERVICES"
-	DefaultServiceTagsVar   string        = "TAGS"
-	DefaultServiceHeartbeat time.Duration = 30 * time.Second
-	DefaultDockerURI        string        = "unix:///var/run/docker.sock"
-	DefaultEtcdURIs         []string      = []string{"http://172.17.42.1:4001/"}
-	DefaultEtcdPrefix       string        = "beacon"
-	DefaultEtcdTTL          time.Duration = 30 * time.Second
-	DefaultTLSKey           string        = ""
-	DefaultTLSCert          string        = ""
-	DefaultTLSCACert        string        = ""
+	DefaultDockerURI       string        = "unix:///var/run/docker.sock"
+	DefaultDockerPoll      time.Duration = 30 * time.Second
+	DefaultEtcdURIs        []string      = []string{"http://localhost:4001/"}
+	DefaultEtcdPrefix      string        = "/beacon"
+	DefaultEtcdProtocol    bool          = false
+	DefaultBeaconHostname  string        = getHostname()
+	DefaultBeaconHeartbeat time.Duration = 30 * time.Second
+	DefaultBeaconTTL       time.Duration = 30 * time.Second
+	DefaultBeaconEnvVar    string        = "SERVICES"
 )
 
-func ConfigMonitor(config *settings.Settings) (*Monitor, error) {
-	docker := config.StringDflt("docker.uri", DefaultDockerURI)
-	hostname := config.StringDflt("service.hostname", getHostname())
-	tags := config.StringArrayDflt("service.tags", []string{})
-	envVar := config.StringDflt("service.var", DefaultServiceVar)
-	tagsVar := config.StringDflt("service.tags-var", DefaultServiceTagsVar)
-	heartbeat := config.DurationDflt("service.heartbeat", DefaultServiceHeartbeat)
-	return NewMonitor(docker, hostname, tags, envVar, tagsVar, heartbeat)
+func ConfigDocker(config *settings.Settings) *Docker {
+	config, err := config.Object("docker")
+	if err != nil {
+		logger.Fatal("invalid 'docker' config object")
+	}
+	uri := config.StringDflt("uri", DefaultDockerURI)
+	poll := config.DurationDflt("poll", DefaultDockerPoll)
+	docker, err := NewDocker(uri, poll, nil)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+	return docker
 }
 
-func ConfigAnnouncer(config *settings.Settings) (*Announcer, error) {
+func ConfigEtcd(config *settings.Settings) *Etcd {
+	config, err := config.Object("etcd")
+	if err != nil {
+		logger.Fatal("invalid 'etcd' config object")
+	}
+
 	uris := config.StringArrayDflt("uris", []string{})
 	if len(uris) == 0 {
 		uris = DefaultEtcdURIs
 	}
-	for n, uri := range uris {
-		uris[n] = strings.TrimRight(uri, "/")
-	}
 
-	tlsKey := config.StringDflt("etcd.tls-key", DefaultTLSKey)
-	tlsCert := config.StringDflt("etcd.tls-cert", DefaultTLSCert)
-	tlsCACert := config.StringDflt("etcd.tls-ca-cert", DefaultTLSCACert)
-	ttl := config.DurationDflt("etcd.ttl", DefaultEtcdTTL)
-	heartbeat := config.DurationDflt("service.heartbeat", DefaultServiceHeartbeat)
-	prefix := config.StringDflt("etcd.prefix", DefaultEtcdPrefix)
-	ttlSeconds := uint64((ttl + heartbeat).Seconds())
+	prefix := config.StringDflt("prefix", DefaultEtcdPrefix)
+	protocol := config.BoolDflt("protocol", DefaultEtcdProtocol)
+	tlsKey := config.StringDflt("tls-key", "")
+	tlsCert := config.StringDflt("tls-cert", "")
+	tlsCACert := config.StringDflt("tls-ca-cert", "")
 
 	if tlsKey != "" && tlsCert != "" && tlsCACert != "" {
-		if !fileIsReadable(tlsKey) {
-			return nil, errors.New("invalid etcd.tls-key: file is not readable")
+		for _, file := range []string{tlsKey, tlsCert, tlsCACert} {
+			if !fileIsReadable(file) {
+				logger.Fatalf("file '%s' is not readable", file)
+			}
 		}
-		if !fileIsReadable(tlsCert) {
-			return nil, errors.New("invalid etcd.tls-cert: file is not readable")
-		}
-		if !fileIsReadable(tlsCACert) {
-			return nil, errors.New("invalid etcd.tls-ca-cert: file is not readable")
-		}
-		return NewTLSAnnouncer(uris, tlsCert, tlsKey, tlsCACert, prefix, ttlSeconds)
-	} else {
-		ann := NewAnnouncer(uris, prefix, ttlSeconds)
-		return ann, nil
+	}
+	etcd, err := NewEtcd(uris, prefix, protocol, tlsCert, tlsKey, tlsCACert)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+	return etcd
+}
+
+func ConfigBeacon(config *settings.Settings) *Beacon {
+	docker := ConfigDocker(config)
+	etcd := ConfigEtcd(config)
+	config, err := config.Object("beacon")
+	if err != nil {
+		logger.Fatal("invalid 'beacon' config object")
+	}
+
+	return &Beacon{
+		Heartbeat: config.DurationDflt("heartbeat", DefaultBeaconHeartbeat),
+		TTL:       config.DurationDflt("ttl", DefaultBeaconTTL),
+		EnvVar:    config.StringDflt("env-var", DefaultBeaconEnvVar),
+		Listeners: []ContainerListener{docker},
+		Discovery: etcd,
 	}
 }
 
