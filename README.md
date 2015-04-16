@@ -2,6 +2,8 @@ Beacon
 ======
 Service discovery for Docker and etcd.
 
+[![Build Status](https://travis-ci.org/BlueDragonX/beacon.svg?branch=master)](https://travis-ci.org/BlueDragonX/beacon)
+
 How It Works
 ------------
 Beacon announces services hosted in containers. A container publishes a service by setting an environment variable. By default this variable is `SERVICES`. You can change this with the `beacon.env-var` config file directive.
