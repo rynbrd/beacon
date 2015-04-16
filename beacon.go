@@ -66,7 +66,10 @@ func (b *Beacon) Run() {
 			logger.Error(err.Error())
 		}
 	}
+
+	// clean up and wait for goroutines
 	close(events)
+	b.destroy()
 	wg.Wait()
 }
 

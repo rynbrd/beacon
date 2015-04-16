@@ -34,7 +34,11 @@ func ParsePort(portStr string) (*Port, error) {
 
 // Equal checks for equality between two ports.
 func (left *Port) Equal(right *Port) bool {
-	return left.Number == right.Number && left.Protocol == right.Protocol
+	if right == nil {
+		return false
+	} else {
+		return left.Number == right.Number && left.Protocol == right.Protocol
+	}
 }
 
 // String converts the port to its string representation.
@@ -49,22 +53,30 @@ type Address struct {
 }
 
 // ParseAddress takes a string of the form host:port/protocol and converts it
-// to an Address.
+// to an Address. If the host part is missing then '0.0.0.0' is used.
 func ParseAddress(addr string) (*Address, error) {
 	parts := strings.SplitN(addr, ":", 2)
 	if len(parts) == 1 {
 		return nil, fmt.Errorf("address must have a port %s", addr)
 	}
+	hostname := parts[0]
+	if hostname == "" {
+		hostname = "0.0.0.0"
+	}
 	port, err := ParsePort(parts[1])
 	if err != nil {
 		return nil, err
 	}
-	return &Address{parts[0], port}, nil
+	return &Address{hostname, port}, nil
 }
 
 // Equal returns true if the addresses are equal.
 func (left *Address) Equal(right *Address) bool {
-	return left.Hostname == right.Hostname && left.Port.Equal(right.Port)
+	if right == nil {
+		return false
+	} else {
+		return left.Hostname == right.Hostname && left.Port.Equal(right.Port)
+	}
 }
 
 // String converts the address to its string representation.

@@ -65,10 +65,13 @@ func ParseContainerService(service string) (*ContainerService, error) {
 		return nil, fmt.Errorf("service must have a port %s", service)
 	}
 	name := strings.TrimSpace(parts[0])
+	if name == "" {
+		return nil, fmt.Errorf("service %s has invalid name %s", service, name)
+	}
 	portStr := strings.TrimSpace(parts[1])
 	port, err := ParsePort(portStr)
 	if err != nil {
-		return nil, fmt.Errorf("service %s has invalid port %s", name, portStr)
+		return nil, fmt.Errorf("service %s has invalid port %s", service, portStr)
 	}
 	return &ContainerService{name, port}, nil
 }
