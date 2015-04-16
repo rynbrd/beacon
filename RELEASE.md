@@ -1,8 +1,9 @@
 ## v2.0.0
+* Improved architecture to support future container runtimes and discovery backends.
 * Simplify etcd directory layout.
-* New configuration layout.
-* Use go-log for logging.
-* Use go-settings for configuration.
+* New configuration file format.
+* Use go-log and go-settings for logging and configuration.
++ Test coverage over core components.
 
 ## v1.1.7
 * Use pinned go-etcd version.
