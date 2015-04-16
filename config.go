@@ -75,7 +75,7 @@ func ConfigBeacon(config *settings.Settings) *Beacon {
 		Heartbeat: config.DurationDflt("heartbeat", DefaultBeaconHeartbeat),
 		TTL:       config.DurationDflt("ttl", DefaultBeaconTTL),
 		EnvVar:    config.StringDflt("env-var", DefaultBeaconEnvVar),
-		Listeners: []ContainerListener{docker},
+		Listeners: []Listener{docker},
 		Discovery: etcd,
 	}
 }

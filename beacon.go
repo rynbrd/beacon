@@ -23,7 +23,7 @@ type Beacon struct {
 	// The container environment variable containing the hosted services.
 	EnvVar string
 	// The listeners to recieve container events from.
-	Listeners []ContainerListener
+	Listeners []Listener
 	// The discovery backend to announce services to.
 	Discovery Discovery
 

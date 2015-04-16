@@ -3,16 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strings"
-)
-
-type ContainerAction int
-
-const (
-	// Container event actions.
-	ContainerAdd ContainerAction = iota
-	ContainerRemove
 )
 
 var (
@@ -80,20 +71,4 @@ func ParseContainerService(service string) (*ContainerService, error) {
 		return nil, fmt.Errorf("service %s has invalid port %s", name, portStr)
 	}
 	return &ContainerService{name, port}, nil
-}
-
-// ContainerEvent is used by the ContainerListener to notify Beacon of
-// container actions.
-type ContainerEvent struct {
-	Action    ContainerAction
-	Container *Container
-}
-
-// ContainerListener emits container events retrieved from a container runtime.
-//
-// Listen queues container events on the provided channel.
-// Close stops the listener and cleans up.
-type ContainerListener interface {
-	Listen(chan<- *ContainerEvent)
-	io.Closer
 }
