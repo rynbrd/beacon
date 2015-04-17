@@ -1,12 +1,10 @@
-## v2.0.1
-* Do not require a configuration file.
-+ Add heartbeat and ttl command line options.
-
 ## v2.0.0
 * Improved architecture to support future container runtimes and discovery backends.
 * Simplify etcd directory layout.
 * New configuration file format.
+* Do not require a configuration file.
 * Use go-log and go-settings for logging and configuration.
++ Support command line configuration.
 + Test coverage over core components.
 
 ## v1.1.7
