@@ -177,6 +177,10 @@ func (b *Beacon) containerServices(container *Container) ([]*ContainerService, e
 	svcs := []*ContainerService{}
 	envVal := container.Env(b.EnvVar)
 	for _, svcStr := range strings.Split(envVal, ",") {
+		svcStr := strings.ToLower(svcStr)
+		if svcStr == "" {
+			continue
+		}
 		if svc, err := ParseContainerService(svcStr); err == nil {
 			svcs = append(svcs, svc)
 		} else {

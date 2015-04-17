@@ -13,9 +13,9 @@
 package main
 
 import (
+	"strings"
 	"testing"
 	"time"
-	"strings"
 )
 
 func mustParseAddress(t *testing.T, address string) *Address {
@@ -52,26 +52,36 @@ func mustParseMappings(t *testing.T, mappingsStr string) []*Mapping {
 
 type BeaconInput struct {
 	action    ContainerAction
-	name      string
 	container *Container
-	addr      *Address
+	services  []BeaconService
+}
+
+type BeaconService struct {
+	name string
+	addr *Address
 }
 
 func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int) {
+	actionLen := announcements + shutdowns + 1
+	for _, input := range inputs {
+		actionLen += len(input.services)
+	}
+	actions := make(chan ServiceAction, actionLen)
+	defer close(actions)
+	discovery := NewMockDiscovery(actions)
+
 	listening := make(chan bool)
 	listener := NewMockListener(listening)
-	actions := make(chan ServiceAction, announcements + shutdowns + len(inputs) + 1)
-	discovery := NewMockDiscovery(actions)
+	defer close(listening)
+
 	beacon := &Beacon{
 		Heartbeat: 30 * time.Second,
-		TTL: 30 * time.Second,
-		EnvVar: "SERVICES",
+		TTL:       30 * time.Second,
+		EnvVar:    "SERVICES",
 		Listeners: []Listener{listener},
 		Discovery: discovery,
 	}
 
-	defer close(listening)
-	defer close(actions)
 	ttl := 60 * time.Second
 
 	go func() {
@@ -88,16 +98,18 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 		// add/remove containers
 		services := make(map[MockDiscoveryKey]MockDiscoveryValue, len(inputs))
 		for _, input := range inputs {
-			if input.action == ContainerAdd {
-				key := MockDiscoveryKey{input.name, input.container.ID}
-				value := MockDiscoveryValue{input.addr, ttl, 1}
-				services[key] = value
+			for _, inSvc := range input.services {
+				if input.action == ContainerAdd {
+					key := MockDiscoveryKey{inSvc.name, input.container.ID}
+					value := MockDiscoveryValue{inSvc.addr, ttl, 1}
+					services[key] = value
 
-				t.Logf("emiting add for %+v\n", input.container)
-			} else if input.action == ContainerRemove {
-				key := MockDiscoveryKey{input.name, input.container.ID}
-				delete(services, key)
-				t.Logf("emiting remove for %+v\n", input.container)
+					t.Logf("emiting add for %+v\n", input.container)
+				} else if input.action == ContainerRemove {
+					key := MockDiscoveryKey{inSvc.name, input.container.ID}
+					delete(services, key)
+					t.Logf("emiting remove for %+v\n", input.container)
+				}
 			}
 			listener.Emit(&ContainerEvent{input.action, input.container})
 		}
@@ -105,7 +117,7 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 		// verify services
 		announceCalls := 0
 		shutdownCalls := 0
-		for i := 0; i < announcements + shutdowns; i++ {
+		for i := 0; i < announcements+shutdowns; i++ {
 			select {
 			case action := <-actions:
 				if action == ServiceAnnounce {
@@ -147,84 +159,117 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 
 func TestBeaconAddOne(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 0)
 }
 
 func TestBeaconAddDuplicate(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 0)
 }
 
-func TestBeaconAddMultiple(t *testing.T) {
+func TestBeaconAddMultipleContainers(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerAdd, "radius",
-		 &Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
-		 mustParseAddress(t, "10.1.1.100:49001/udp")},
-		{ContainerAdd, "api",
-		 &Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
-		 mustParseAddress(t, "172.16.0.12:443/tcp")},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerAdd,
+			&Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
+			[]BeaconService{{"radius", mustParseAddress(t, "10.1.1.100:49001/udp")}}},
+		{ContainerAdd,
+			&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+			[]BeaconService{{"api", mustParseAddress(t, "172.16.0.12:443/tcp")}}},
 	}
 	testBeacon(t, inputs, 3, 0)
 }
 
+func TestBeaconNoService(t *testing.T) {
+	inputs := []BeaconInput{
+		{ContainerAdd,
+			&Container{"c1", []string{}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{}},
+	}
+	testBeacon(t, inputs, 0, 0)
+}
+
+func TestBeaconAddMultipleServices(t *testing.T) {
+	inputs := []BeaconInput{
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.100:49001/tcp")}}},
+		{ContainerAdd,
+			&Container{"c2", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.11", mustParseMappings(t, "10.1.1.101:49000/tcp->443/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "172.16.0.11:80/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.101:49000/tcp")}}},
+	}
+	testBeacon(t, inputs, 4, 0)
+}
+
+func TestRemoveMultipleServices(t *testing.T) {
+	inputs := []BeaconInput{
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.100:49001/tcp")}}},
+		{ContainerRemove,
+			&Container{"c1", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.100:49001/tcp")}}},
+	}
+	testBeacon(t, inputs, 2, 2)
+}
+
 func TestBeaconRemoveOne(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerRemove, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerRemove,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 1)
 }
 
 func TestBeaconRemoveDuplicate(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerRemove, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerRemove, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerRemove,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerRemove,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 1)
 }
 
-func TestBeaconRemoveMultiple(t *testing.T) {
+func TestBeaconRemoveMultipleContainers(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerAdd, "radius",
-		 &Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
-		 mustParseAddress(t, "10.1.1.100:49001/udp")},
-		{ContainerAdd, "api",
-		 &Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
-		 mustParseAddress(t, "172.16.0.12:443/tcp")},
-		{ContainerRemove, "www",
-		 &Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		 mustParseAddress(t, "10.1.1.100:49000/tcp")},
-		{ContainerRemove, "api",
-		 &Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
-		 mustParseAddress(t, "172.16.0.12:443/tcp")},
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerAdd,
+			&Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
+			[]BeaconService{{"radius", mustParseAddress(t, "10.1.1.100:49001/udp")}}},
+		{ContainerAdd,
+			&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+			[]BeaconService{{"api", mustParseAddress(t, "172.16.0.12:443/tcp")}}},
+		{ContainerRemove,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
+		{ContainerRemove,
+			&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+			[]BeaconService{{"api", mustParseAddress(t, "172.16.0.12:443/tcp")}}},
 	}
 	testBeacon(t, inputs, 3, 2)
 }
@@ -235,8 +280,8 @@ func TestBeaconHeartbeatAndClose(t *testing.T) {
 	discovery := NewMockDiscovery(nil)
 	beacon := &Beacon{
 		Heartbeat: 2 * time.Second,
-		TTL: 30 * time.Second,
-		EnvVar: "SERVICES",
+		TTL:       30 * time.Second,
+		EnvVar:    "SERVICES",
 		Listeners: []Listener{listener},
 		Discovery: discovery,
 	}
@@ -244,9 +289,9 @@ func TestBeaconHeartbeatAndClose(t *testing.T) {
 	defer close(listening)
 
 	containers := []*Container{
-		&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
-		&Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
-		&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+		{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
+		{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
 	}
 
 	go func() {
