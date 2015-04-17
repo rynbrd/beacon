@@ -12,8 +12,17 @@ import (
 var logger *log.Logger = log.NewOrExit()
 
 func configure(args []string) *settings.Settings {
+	// load configuration
 	options := ParseOptionsOrExit(args)
-	config := settings.LoadOrExit(options.Config)
+	var config *settings.Settings
+	if _, err := os.Stat(options.Config); os.IsNotExist(err) {
+		config = settings.New()
+	} else if err == nil {
+		config = settings.LoadOrExit(options.Config)
+	} else {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	// set config values from cli options
 	if options.EnvVar != "" {

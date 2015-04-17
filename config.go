@@ -20,7 +20,9 @@ var (
 
 func ConfigDocker(config *settings.Settings) *Docker {
 	config, err := config.Object("docker")
-	if err != nil {
+	if err == settings.KeyError {
+		config = settings.New()
+	} else if err != nil {
 		logger.Fatal("invalid 'docker' config object")
 	}
 	uri := config.StringDflt("uri", DefaultDockerURI)
@@ -34,7 +36,9 @@ func ConfigDocker(config *settings.Settings) *Docker {
 
 func ConfigEtcd(config *settings.Settings) *Etcd {
 	config, err := config.Object("etcd")
-	if err != nil {
+	if err == settings.KeyError {
+		config = settings.New()
+	} else if err != nil {
 		logger.Fatal("invalid 'etcd' config object")
 	}
 
@@ -67,7 +71,9 @@ func ConfigBeacon(config *settings.Settings) *Beacon {
 	docker := ConfigDocker(config)
 	etcd := ConfigEtcd(config)
 	config, err := config.Object("beacon")
-	if err != nil {
+	if err == settings.KeyError {
+		config = settings.New()
+	} else if err != nil {
 		logger.Fatal("invalid 'beacon' config object")
 	}
 

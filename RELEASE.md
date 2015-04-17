@@ -1,3 +1,6 @@
+## v2.0.1
+* Do not require a configuration file.
+
 ## v2.0.0
 * Improved architecture to support future container runtimes and discovery backends.
 * Simplify etcd directory layout.

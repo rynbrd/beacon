@@ -58,7 +58,7 @@ I will lead with an example:
 	  # turn on debug logging
 	  level: debug
 
-As you can see the configuration file is YAML. It consists of four appropriately named sections: `beacon`, `docker`, `etcd`, and `logging`.
+As you can see the configuration file is YAML. It consists of four appropriately named sections: `beacon`, `docker`, `etcd`, and `logging`. All values have defaults. The configuration file is not required. If absent all values will be set to their defaults.
 
 ### beacon
 This section contains process wide configuration. The following directive are available:
