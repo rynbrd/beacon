@@ -28,6 +28,12 @@ func configure(args []string) *settings.Settings {
 	if options.EnvVar != "" {
 		config.Set("beacon.env-var", options.EnvVar)
 	}
+	if options.Heartbeat.Nanoseconds() != 0 {
+		config.Set("beacon.heartbeat", options.Heartbeat)
+	}
+	if options.TTL.Nanoseconds() != 0 {
+		config.Set("beacon.ttl", options.TTL)
+	}
 	if len(options.Etcd) > 0 {
 		config.Set("etcd.uris", options.Etcd)
 	}

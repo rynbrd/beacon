@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"strings"
+	"time"
 )
 
 var DefaultConfigFile string = "/etc/beacon.yml"
@@ -23,6 +24,8 @@ func (strs *stringsOpt) Set(value string) error {
 type Options struct {
 	Config    string
 	EnvVar    string
+	Heartbeat time.Duration
+	TTL       time.Duration
 	Etcd      []string
 	Prefix    string
 	Docker    string
@@ -32,11 +35,14 @@ type Options struct {
 
 func ParseOptionsOrExit(args []string) *Options {
 	var config, envVar, docker, prefix, logTarget, logLevel string
+	var heartbeat, ttl time.Duration
 	var etcd stringsOpt
 
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 	flags.StringVar(&config, "config", DefaultConfigFile, "The path to the config file.")
 	flags.StringVar(&envVar, "var", "", "The name of the service variable.")
+	flags.DurationVar(&heartbeat, "heartbeat", 0*time.Second, "How often to refresh service TTL's.")
+	flags.DurationVar(&ttl, "ttl", 0*time.Second, "How long to keep a service after missing a heartbeat.")
 	flags.Var(&etcd, "etcd", "The etcd endpoint. May be provided multiple times.")
 	flags.StringVar(&prefix, "prefix", "", "A prefix to prepend to all etcd key paths.")
 	flags.StringVar(&docker, "docker", "", "The Docker endpoint.")
@@ -47,6 +53,8 @@ func ParseOptionsOrExit(args []string) *Options {
 	return &Options{
 		Config:    config,
 		EnvVar:    envVar,
+		Heartbeat: heartbeat,
+		TTL:       ttl,
 		Etcd:      []string(etcd),
 		Prefix:    prefix,
 		Docker:    docker,

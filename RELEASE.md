@@ -1,5 +1,6 @@
 ## v2.0.1
 * Do not require a configuration file.
++ Add heartbeat and ttl command line options.
 
 ## v2.0.0
 * Improved architecture to support future container runtimes and discovery backends.
