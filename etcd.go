@@ -107,7 +107,7 @@ func (e *Etcd) rm(path string) {
 	if _, err := e.client.DeleteDir(path); err == nil {
 		logger.Debugf("etcd rm of %s successful", path)
 	} else {
-		logger.Errorf("etcd rm of %s failed: %s", path, err)
+		logger.Debugf("etcd rm of %s failed: %s", path, err)
 	}
 }
 
