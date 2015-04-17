@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+var BeaconHostname string = "testing.example.net"
+
 func mustParseAddress(t *testing.T, address string) *Address {
 	addr, err := ParseAddress(address)
 	if err != nil {
@@ -75,6 +77,7 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 	defer close(listening)
 
 	beacon := &Beacon{
+		Hostname:  BeaconHostname,
 		Heartbeat: 30 * time.Second,
 		TTL:       30 * time.Second,
 		EnvVar:    "SERVICES",
@@ -200,6 +203,18 @@ func TestBeaconNoService(t *testing.T) {
 			[]BeaconService{}},
 	}
 	testBeacon(t, inputs, 0, 0)
+}
+
+func TestBeaconBadHostname(t *testing.T) {
+	inputs := []BeaconInput{
+		{ContainerAdd,
+			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, ":49000/tcp->80/tcp")},
+			[]BeaconService{{"www", mustParseAddress(t, BeaconHostname+":49000/tcp")}}},
+		{ContainerAdd,
+			&Container{"c2", []string{"SERVICES=www-ssl:443"}, "172.16.0.11", mustParseMappings(t, "0.0.0.0:49001/tcp->443/tcp")},
+			[]BeaconService{{"www-ssl", mustParseAddress(t, BeaconHostname+":49001/tcp")}}},
+	}
+	testBeacon(t, inputs, 2, 0)
 }
 
 func TestBeaconAddMultipleServices(t *testing.T) {

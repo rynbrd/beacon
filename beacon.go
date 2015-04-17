@@ -16,6 +16,8 @@ type serviceKey struct {
 // service into etcd. When a container goes offline those published services
 // are removed.
 type Beacon struct {
+	// The hostname to use when announcing mapped ports.
+	Hostname string
 	// The interval between heartbeats.
 	Heartbeat time.Duration
 	// How long to keep a service available after a heartbeat is missed.
@@ -190,9 +192,15 @@ func (b *Beacon) containerServices(container *Container) ([]*ContainerService, e
 	return svcs, nil
 }
 
-// containerAddress retrieves the address for a port on the container.
+// containerAddress retrieves the address for a port on the container. The
+// value of `beacon.hostname` will be used if the port is mapped but does not
+// return a valid hostname. A valid hostname is any value which is not an empty
+// string or "0.0.0.0".
 func (b *Beacon) containerAddress(container *Container, port *Port) (*Address, error) {
 	if addr, err := container.Mapping(port); err == nil {
+		if addr.Hostname == "" || addr.Hostname == "0.0.0.0" {
+			addr.Hostname = b.Hostname
+		}
 		return addr, nil
 	} else if err == PortNotMapped {
 		return &Address{container.Hostname, port}, nil

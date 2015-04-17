@@ -22,13 +22,14 @@ Command Line
 ------------
 Beacon takes a few commandline options. These are:
 
-`config` - The path to the config file. Defaults to /etc/beacon.yml.
-`var` - The name of the service variable.
-`heartbeat` - How often to refresh service TTL's.
-`ttl` - How long to keep a service after missing a heartbeat.
-`etcd` - The etcd endpoint. May be provided multiple times.
-`prefix` - The root of all etcd keys.
-`docker` - The Docker endpoint.
+* `config` - The path to the config file. Defaults to /etc/beacon.yml.
+* `var` - The name of the service variable.
+* `hostname` - The hostname to use when announcing mapped ports.
+* `heartbeat` - How often to refresh service TTL's.
+* `ttl` - How long to keep a service after missing a heartbeat.
+* `etcd` - The etcd endpoint. May be provided multiple times.
+* `prefix` - The root of all etcd keys.
+* `docker` - The Docker endpoint.
 
 Config File
 -----------
@@ -36,6 +37,9 @@ I will lead with an example:
 
 	# Example config.
 	beacon:
+      # Used when a mapped port does not have a reachable IP.
+	  hostname: test.example.net
+
 	  # Refresh the services in etcd every two minutes.
 	  heartbeat: 120
 
@@ -65,6 +69,7 @@ As you can see the configuration file is YAML. It consists of four appropriately
 ### beacon
 This section contains process wide configuration. The following directive are available:
 
+* `hostname` - The hostname to use when announcing mapped ports.
 * `heartbeat` - How often to refresh service TTL's. Default `30s`.
 * `ttl` - How long to keep a service after missing a heartbeat. Default `30s`.
 * `env-var` - The name of the services variable. Default `SERVICES`.

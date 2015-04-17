@@ -78,6 +78,7 @@ func ConfigBeacon(config *settings.Settings) *Beacon {
 	}
 
 	return &Beacon{
+		Hostname:  config.StringDflt("hostname", DefaultBeaconHostname),
 		Heartbeat: config.DurationDflt("heartbeat", DefaultBeaconHeartbeat),
 		TTL:       config.DurationDflt("ttl", DefaultBeaconTTL),
 		EnvVar:    config.StringDflt("env-var", DefaultBeaconEnvVar),

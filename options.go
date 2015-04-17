@@ -23,6 +23,7 @@ func (strs *stringsOpt) Set(value string) error {
 // Store values retrieved from the cli.
 type Options struct {
 	Config    string
+	Hostname  string
 	EnvVar    string
 	Heartbeat time.Duration
 	TTL       time.Duration
@@ -34,13 +35,14 @@ type Options struct {
 }
 
 func ParseOptionsOrExit(args []string) *Options {
-	var config, envVar, docker, prefix, logTarget, logLevel string
+	var config, hostname, envVar, docker, prefix, logTarget, logLevel string
 	var heartbeat, ttl time.Duration
 	var etcd stringsOpt
 
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 	flags.StringVar(&config, "config", DefaultConfigFile, "The path to the config file.")
 	flags.StringVar(&envVar, "var", "", "The name of the service variable.")
+	flags.StringVar(&hostname, "hostname", "", "The hostname to use when announcing mapped ports.")
 	flags.DurationVar(&heartbeat, "heartbeat", 0*time.Second, "How often to refresh service TTL's.")
 	flags.DurationVar(&ttl, "ttl", 0*time.Second, "How long to keep a service after missing a heartbeat.")
 	flags.Var(&etcd, "etcd", "The etcd endpoint. May be provided multiple times.")
@@ -52,6 +54,7 @@ func ParseOptionsOrExit(args []string) *Options {
 
 	return &Options{
 		Config:    config,
+		Hostname:  hostname,
 		EnvVar:    envVar,
 		Heartbeat: heartbeat,
 		TTL:       ttl,

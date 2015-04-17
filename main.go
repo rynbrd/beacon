@@ -25,6 +25,9 @@ func configure(args []string) *settings.Settings {
 	}
 
 	// set config values from cli options
+	if options.Hostname != "" {
+		config.Set("beacon.hostname", options.Hostname)
+	}
 	if options.EnvVar != "" {
 		config.Set("beacon.env-var", options.EnvVar)
 	}
