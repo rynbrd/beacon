@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/BlueDragonX/go-etcd/etcd"
+	"github.com/coreos/go-etcd/etcd"
 	"strings"
 	"time"
 )
