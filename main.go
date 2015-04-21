@@ -40,8 +40,11 @@ func configure(args []string) *settings.Settings {
 	if len(options.Etcd) > 0 {
 		config.Set("etcd.uris", options.Etcd)
 	}
-	if options.Prefix != "" {
-		config.Set("etcd.prefix", options.Prefix)
+	if options.EtcdPrefix != "" {
+		config.Set("etcd.prefix", options.EtcdPrefix)
+	}
+	if options.EtcdFormat != "" {
+		config.Set("etcd.format", options.EtcdFormat)
 	}
 	if options.Docker != "" {
 		config.Set("docker.uri", options.Docker)

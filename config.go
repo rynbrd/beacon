@@ -11,7 +11,7 @@ var (
 	DefaultDockerPoll      time.Duration = 30 * time.Second
 	DefaultEtcdURIs        []string      = []string{"http://localhost:4001/"}
 	DefaultEtcdPrefix      string        = "/beacon"
-	DefaultEtcdProtocol    bool          = false
+	DefaultEtcdFormat      string        = "json"
 	DefaultBeaconHostname  string        = getHostname()
 	DefaultBeaconHeartbeat time.Duration = 30 * time.Second
 	DefaultBeaconTTL       time.Duration = 30 * time.Second
@@ -48,7 +48,7 @@ func ConfigEtcd(config *settings.Settings) *Etcd {
 	}
 
 	prefix := config.StringDflt("prefix", DefaultEtcdPrefix)
-	protocol := config.BoolDflt("protocol", DefaultEtcdProtocol)
+	format := config.StringDflt("format", DefaultEtcdFormat)
 	tlsKey := config.StringDflt("tls-key", "")
 	tlsCert := config.StringDflt("tls-cert", "")
 	tlsCACert := config.StringDflt("tls-ca-cert", "")
@@ -60,7 +60,12 @@ func ConfigEtcd(config *settings.Settings) *Etcd {
 			}
 		}
 	}
-	etcd, err := NewEtcd(uris, prefix, protocol, tlsCert, tlsKey, tlsCACert)
+
+	if format != string(JSONFormat) && format != string(AddressFormat) {
+		logger.Fatalf("etcd format '%s' is invalid", format)
+	}
+
+	etcd, err := NewEtcd(uris, prefix, ServiceFormat(format), tlsCert, tlsKey, tlsCACert)
 	if err != nil {
 		logger.Fatal(err.Error())
 	}

@@ -1,3 +1,10 @@
+## v2.1.0
++ Add support for JSON etcd values.
++ Add option '-etcd-format'.
+* Rename option '-prefix' to '-etcd-prefix'.
+* Replace 'etcd.protocol' with 'etcd.format' config option.
+* Default etcd key format to JSON.
+
 ## v2.0.1
 * Unpin go-etcd library.
 

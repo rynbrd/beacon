@@ -22,20 +22,21 @@ func (strs *stringsOpt) Set(value string) error {
 
 // Store values retrieved from the cli.
 type Options struct {
-	Config    string
-	Hostname  string
-	EnvVar    string
-	Heartbeat time.Duration
-	TTL       time.Duration
-	Etcd      []string
-	Prefix    string
-	Docker    string
-	LogTarget string
-	LogLevel  string
+	Config     string
+	Hostname   string
+	EnvVar     string
+	Heartbeat  time.Duration
+	TTL        time.Duration
+	Etcd       []string
+	EtcdPrefix string
+	EtcdFormat string
+	Docker     string
+	LogTarget  string
+	LogLevel   string
 }
 
 func ParseOptionsOrExit(args []string) *Options {
-	var config, hostname, envVar, docker, prefix, logTarget, logLevel string
+	var config, hostname, envVar, docker, prefix, format, logTarget, logLevel string
 	var heartbeat, ttl time.Duration
 	var etcd stringsOpt
 
@@ -46,22 +47,24 @@ func ParseOptionsOrExit(args []string) *Options {
 	flags.DurationVar(&heartbeat, "heartbeat", 0*time.Second, "How often to refresh service TTL's.")
 	flags.DurationVar(&ttl, "ttl", 0*time.Second, "How long to keep a service after missing a heartbeat.")
 	flags.Var(&etcd, "etcd", "The etcd endpoint. May be provided multiple times.")
-	flags.StringVar(&prefix, "prefix", "", "A prefix to prepend to all etcd key paths.")
+	flags.StringVar(&prefix, "etcd-prefix", "", "A prefix to prepend to all etcd key paths.")
+	flags.StringVar(&format, "etcd-format", "", "The format to store etcd keys in.")
 	flags.StringVar(&docker, "docker", "", "The Docker endpoint.")
 	flags.StringVar(&logTarget, "log-target", "", "The target to log to.")
 	flags.StringVar(&logLevel, "log-level", "", "The level of logs to log.")
 	flags.Parse(args[1:])
 
 	return &Options{
-		Config:    config,
-		Hostname:  hostname,
-		EnvVar:    envVar,
-		Heartbeat: heartbeat,
-		TTL:       ttl,
-		Etcd:      []string(etcd),
-		Prefix:    prefix,
-		Docker:    docker,
-		LogTarget: logTarget,
-		LogLevel:  logLevel,
+		Config:     config,
+		Hostname:   hostname,
+		EnvVar:     envVar,
+		Heartbeat:  heartbeat,
+		TTL:        ttl,
+		Etcd:       []string(etcd),
+		EtcdPrefix: prefix,
+		EtcdFormat: format,
+		Docker:     docker,
+		LogTarget:  logTarget,
+		LogLevel:   logLevel,
 	}
 }

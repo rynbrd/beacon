@@ -1,22 +1,30 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/coreos/go-etcd/etcd"
 	"strings"
 	"time"
 )
 
+type ServiceFormat string
+
+const (
+	JSONFormat    ServiceFormat = "json"
+	AddressFormat               = "address"
+)
+
 // Etcd announces services into etcd.
 type Etcd struct {
-	client   *etcd.Client
-	prefix   string
-	protocol bool
-	stopped  chan struct{}
+	client  *etcd.Client
+	prefix  string
+	format  ServiceFormat
+	stopped chan struct{}
 }
 
 // NewEtcd creates a new Etcd discovery backend. TLS is enabled if all TLS
 // parameters are provided.
-func NewEtcd(uris []string, prefix string, protocol bool, tlsCert, tlsKey, tlsCACert string) (*Etcd, error) {
+func NewEtcd(uris []string, prefix string, format ServiceFormat, tlsCert, tlsKey, tlsCACert string) (*Etcd, error) {
 	var err error
 	var client *etcd.Client
 	for n, uri := range uris {
@@ -32,25 +40,22 @@ func NewEtcd(uris []string, prefix string, protocol bool, tlsCert, tlsKey, tlsCA
 	}
 
 	prefix = strings.Trim(prefix, "/")
-	etcd := &Etcd{client, prefix, protocol, make(chan struct{})}
+	etcd := &Etcd{client, prefix, format, make(chan struct{})}
 	go etcd.cleanup()
 	return etcd, nil
 }
 
 // Announce a service.
 func (e *Etcd) Announce(name, container string, address *Address, ttl time.Duration) error {
-	path := e.joinPath(e.prefix, name, container)
+	var err error
 	var value string
-	if e.protocol {
-		value = address.String()
-	} else {
-		value = address.StringNoProtocol()
-	}
-	_, err := e.client.Set(path, value, 0)
-	if err == nil {
-		logger.Debugf("etcd set of '%s=%s' successful", path, value)
-	} else {
-		logger.Errorf("etcd set of '%s=%s' failed: %s", path, value, err)
+	path := e.joinPath(e.prefix, name, container)
+	if value, err = e.formatAddress(address); err == nil {
+		if _, err = e.client.Set(path, value, 0); err == nil {
+			logger.Debugf("etcd set of '%s=%s' successful", path, value)
+		} else {
+			logger.Errorf("etcd set of '%s=%s' failed: %s", path, value, err)
+		}
 	}
 	return err
 }
@@ -121,4 +126,23 @@ func (e *Etcd) joinPath(args ...string) string {
 		}
 	}
 	return path
+}
+
+// format an address for storage
+func (e *Etcd) formatAddress(addr *Address) (string, error) {
+	switch e.format {
+	case JSONFormat:
+		data := struct {
+			Host     string
+			Port     int
+			Protocol string
+		}{addr.Hostname, addr.Port.Number, addr.Port.Protocol}
+		if bytes, err := json.Marshal(data); err == nil {
+			return string(bytes), nil
+		} else {
+			return "", err
+		}
+	default:
+		return addr.StringNoProtocol(), nil
+	}
 }
