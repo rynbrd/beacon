@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/coreos/go-etcd/etcd"
+	"math"
 	"strings"
 	"time"
 )
@@ -51,7 +52,9 @@ func (e *Etcd) Announce(name, container string, address *Address, ttl time.Durat
 	var value string
 	path := e.joinPath(e.prefix, name, container)
 	if value, err = e.formatAddress(address); err == nil {
-		if _, err = e.client.Set(path, value, 0); err == nil {
+		ttlSecs := ttl.Seconds()
+		ttlInt := uint64(ttlSecs + math.Copysign(0.5, ttlSecs))
+		if _, err = e.client.Set(path, value, ttlInt); err == nil {
 			logger.Debugf("etcd set of '%s=%s' successful", path, value)
 		} else {
 			logger.Errorf("etcd set of '%s=%s' failed: %s", path, value, err)
