@@ -38,9 +38,14 @@ func (docker *Docker) Listen(events chan<- *ContainerEvent) {
 
 	// listen for events from docker
 	clientEvents := make(chan *dockerclient.Event)
-	docker.client.StartMonitorEvents(func(e *dockerclient.Event, args ...interface{}) {
-		clientEvents <- e
-	})
+	clientErrors := make(chan error)
+
+	startMonitor := func() {
+		docker.client.StartMonitorEvents(func(e *dockerclient.Event, _ chan error, _ ...interface{}) {
+			clientEvents <- e
+		}, clientErrors)
+	}
+	go startMonitor()
 
 	// do an initial poll to load the current containers
 	docker.poll(events)
@@ -55,9 +60,17 @@ Loop:
 			// process client events from monitor
 			if e.Status == "start" || e.Status == "unpause" {
 				docker.add(e.Id, events)
+				logger.Debugf("event %s added container %s", e.Status, e.Id)
 			} else if e.Status == "die" || e.Status == "kill" || e.Status == "pause" {
 				docker.remove(e.Id, events)
+				logger.Debugf("event %s removed container %s", e.Status, e.Id)
+			} else {
+				logger.Debugf("event %s ignored for container %s", e.Status, e.Id)
 			}
+		case err := <-clientErrors:
+			// monitor failed, restart it
+			logger.Errorf("client monitor failed: %s", err)
+			go startMonitor()
 		case <-ticker.C:
 			// poll for container list
 			docker.poll(events)
@@ -77,7 +90,7 @@ func (docker *Docker) Close() error {
 
 func (docker *Docker) poll(events chan<- *ContainerEvent) {
 	logger.Debugf("docker poll started")
-	containers, err := docker.client.ListContainers(false)
+	containers, err := docker.client.ListContainers(false, false, "")
 	if err != nil {
 		logger.Errorf("list containers failed: %s", err)
 	}
@@ -145,7 +158,7 @@ func (docker *Docker) get(id string) *Container {
 	return &Container{
 		ID:       info.Id,
 		Environ:  info.Config.Env,
-		Hostname: info.NetworkSettings.IpAddress,
+		Hostname: info.NetworkSettings.IPAddress,
 		Mappings: mappings,
 	}
 }

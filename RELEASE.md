@@ -1,3 +1,6 @@
+## v2.1.2
+* Update library deps.
+
 ## v2.1.1
 * Include TTL when setting keys.
 
