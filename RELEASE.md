@@ -1,5 +1,6 @@
 ## v2.1.2
-* Update library deps.
+* Update go-log and go-settings deps.
+* Use latest dockerclient. 
 
 ## v2.1.1
 * Include TTL when setting keys.
