@@ -1,3 +1,6 @@
+## v2.1.3
++ Add Makefile.
+
 ## v2.1.2
 * Update go-log and go-settings deps.
 * Use latest dockerclient. 
