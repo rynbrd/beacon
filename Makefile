@@ -24,12 +24,12 @@ $(project_path):
 
 $(BIN)/$(name): $(project_path)
 	go get -d $(project_url)
-	go install -a $(project_url)
+	go install $(project_url)
 	mkdir -p $(BIN)
 	mv $(GOPATH)/bin/$(name) $(BIN)/$(name)
 $(BIN)/$(name).static: $(project_path)
 	go get -d $(project_url)
-	go install -a -ldflags "-linkmode external -extldflags -static" $(project_url)
+	go install -ldflags "-linkmode external -extldflags -static" $(project_url)
 	mkdir -p $(BIN)
 	mv $(GOPATH)/bin/$(name) $(BIN)/$(name).static
 

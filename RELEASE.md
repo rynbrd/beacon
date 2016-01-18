@@ -1,3 +1,6 @@
+## v2.1.4
+- Remove -a flag for build.
+
 ## v2.1.3
 + Add Makefile.
 
