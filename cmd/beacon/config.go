@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/BlueDragonX/beacon/beacon"
+	"github.com/BlueDragonX/beacon/docker"
+	"github.com/BlueDragonX/beacon/etcd"
 	"gopkg.in/BlueDragonX/go-settings.v1"
 	"os"
 	"time"
@@ -18,7 +21,7 @@ var (
 	DefaultBeaconEnvVar    string        = "SERVICES"
 )
 
-func ConfigDocker(config *settings.Settings) *Docker {
+func ConfigDocker(config *settings.Settings) *docker.Docker {
 	config, err := config.Object("docker")
 	if err == settings.KeyError {
 		config = settings.New()
@@ -27,14 +30,14 @@ func ConfigDocker(config *settings.Settings) *Docker {
 	}
 	uri := config.StringDflt("uri", DefaultDockerURI)
 	poll := config.DurationDflt("poll", DefaultDockerPoll)
-	docker, err := NewDocker(uri, poll, nil)
+	listener, err := docker.NewDocker(uri, poll, nil)
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
-	return docker
+	return listener
 }
 
-func ConfigEtcd(config *settings.Settings) *Etcd {
+func ConfigEtcd(config *settings.Settings) *etcd.Etcd {
 	config, err := config.Object("etcd")
 	if err == settings.KeyError {
 		config = settings.New()
@@ -61,20 +64,20 @@ func ConfigEtcd(config *settings.Settings) *Etcd {
 		}
 	}
 
-	if format != string(JSONFormat) && format != string(AddressFormat) {
+	if format != string(etcd.JSONFormat) && format != string(etcd.AddressFormat) {
 		logger.Fatalf("etcd format '%s' is invalid", format)
 	}
 
-	etcd, err := NewEtcd(uris, prefix, ServiceFormat(format), tlsCert, tlsKey, tlsCACert)
+	backend, err := etcd.NewEtcd(uris, prefix, etcd.ServiceFormat(format), tlsCert, tlsKey, tlsCACert)
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
-	return etcd
+	return backend
 }
 
-func ConfigBeacon(config *settings.Settings) *Beacon {
-	docker := ConfigDocker(config)
-	etcd := ConfigEtcd(config)
+func ConfigBeacon(config *settings.Settings) *beacon.Beacon {
+	listener := ConfigDocker(config)
+	backend := ConfigEtcd(config)
 	config, err := config.Object("beacon")
 	if err == settings.KeyError {
 		config = settings.New()
@@ -82,13 +85,13 @@ func ConfigBeacon(config *settings.Settings) *Beacon {
 		logger.Fatal("invalid 'beacon' config object")
 	}
 
-	return &Beacon{
+	return &beacon.Beacon{
 		Hostname:  config.StringDflt("hostname", DefaultBeaconHostname),
 		Heartbeat: config.DurationDflt("heartbeat", DefaultBeaconHeartbeat),
 		TTL:       config.DurationDflt("ttl", DefaultBeaconTTL),
 		EnvVar:    config.StringDflt("env-var", DefaultBeaconEnvVar),
-		Listeners: []Listener{docker},
-		Discovery: etcd,
+		Listeners: []beacon.Listener{listener},
+		Discovery: backend,
 	}
 }
 

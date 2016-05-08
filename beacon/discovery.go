@@ -1,6 +1,7 @@
-package main
+package beacon
 
 import (
+	"github.com/BlueDragonX/beacon/container"
 	"io"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 // being provided by a container. This enables a service to be removed
 // immediately instead of waiting for a TTL to expire.
 type Discovery interface {
-	Announce(name, container string, address *Address, ttl time.Duration) error
+	Announce(name, container string, address *container.Address, ttl time.Duration) error
 	Shutdown(name, container string) error
 	io.Closer
 }

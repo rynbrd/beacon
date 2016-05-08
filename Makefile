@@ -1,10 +1,9 @@
 name=beacon
+version=$(shell git describe --tags --dirty)
 
-changed=$(shell git diff --shortstat 2> /dev/null | tail -n1)
-version=$(shell git tag --points-at HEAD | tail -n1)
-branch=$(shell git rev-parse --abbrev-ref HEAD | tr -c "[[:alnum:]]\\n._-" "_")
+gopkgs=./cmd/beacon ./beacon ./container ./docker ./etcd
 
-export BIN=$(shell pwd)/bin
+export GOBIN=$(shell pwd)/bin
 export GOPATH=$(shell pwd)/.go
 org_url=github.com/BlueDragonX
 org_path=$(GOPATH)/src/$(org_url)
@@ -12,29 +11,29 @@ project_url=$(org_url)/$(name)
 project_path=$(org_path)/$(name)
 
 .PHONY: clean test static
-all: $(BIN)/$(name)
-static: $(BIN)/$(name).static
+all: build
+build: $(GOBIN)/beacon
+static: $(OGBIN)/beacon.static
 
 clean:
-	rm -rf $(BIN) $(GOPATH)
+	rm -rf $(GOBIN) $(GOPATH)
 
 $(project_path):
 	mkdir -p $(org_path)
 	ln -sf $(shell pwd) $(project_path)
 
-$(BIN)/$(name): $(project_path)
-	go get -d $(project_url)
-	go install $(project_url)
-	mkdir -p $(BIN)
-	mv $(GOPATH)/bin/$(name) $(BIN)/$(name)
-$(BIN)/$(name).static: $(project_path)
-	go get -d $(project_url)
-	go install -ldflags "-linkmode external -extldflags -static" $(project_url)
-	mkdir -p $(BIN)
-	mv $(GOPATH)/bin/$(name) $(BIN)/$(name).static
+$(GOBIN)/beacon: $(project_path)
+	go get -d $(project_url)/cmd/beacon
+	go install $(project_url)/cmd/beacon
+
+$(GOBIN)/beacon.static: $(project_path)
+	go get -d $(project_url)/cmd/beacon
+	GOBIN=$(GOPATH)/bin go install -ldflags "-linkmode external -extldflags -static" $(project_url)/cmd/beacon
+	mkdir -p $(GOBIN)
+	mv $(GOPATH)/bin/beacon $(GOBIN)/beacon.static
 
 test: $(project_path)
-	test -z "$(shell gofmt -s -l *.go)"
-	go vet .
-	go get -d -t .
-	go test -v -race .
+	test -z "$(shell gofmt -s -l $(gopkgs))"
+	go vet $(gopkgs)
+	go get -d -t $(gopkgs)
+	go test -v -race $(gopkgs)

@@ -1,4 +1,4 @@
-package main
+package container
 
 import (
 	"errors"
@@ -50,16 +50,15 @@ func (cntr *Container) Mapping(port *Port) (*Address, error) {
 	return nil, PortNotMapped
 }
 
-// ContainerService describes how a container publishes access to a particular
-// service.
-type ContainerService struct {
+// Service describes how a container publishes access to a particular service.
+type Service struct {
 	Name string
 	Port *Port
 }
 
-// ParseContainerService converts a string of the form svc1:port/protocol and
-// returns a ContainerService struct.
-func ParseContainerService(service string) (*ContainerService, error) {
+// ParseService converts a string of the form svc1:port/protocol and returns a
+// Service struct.
+func ParseService(service string) (*Service, error) {
 	parts := strings.SplitN(service, ":", 2)
 	if len(parts) == 1 {
 		return nil, fmt.Errorf("service must have a port %s", service)
@@ -73,5 +72,5 @@ func ParseContainerService(service string) (*ContainerService, error) {
 	if err != nil {
 		return nil, fmt.Errorf("service %s has invalid port %s", service, portStr)
 	}
-	return &ContainerService{name, port}, nil
+	return &Service{name, port}, nil
 }

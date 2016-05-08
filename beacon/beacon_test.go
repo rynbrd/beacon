@@ -10,9 +10,10 @@
 // Beacon should re-announce all services at an interval of `beacon.Heartbeat`.
 //
 // Beacon should shutdown all services on close.
-package main
+package beacon
 
 import (
+	"github.com/BlueDragonX/beacon/container"
 	"strings"
 	"testing"
 	"time"
@@ -20,32 +21,35 @@ import (
 
 var BeaconHostname string = "testing.example.net"
 
-func mustParseAddress(t *testing.T, address string) *Address {
-	addr, err := ParseAddress(address)
+func mustParseAddress(t *testing.T, address string) *container.Address {
+	addr, err := container.ParseAddress(address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return addr
 }
 
-func mustParseMapping(t *testing.T, mapping string) *Mapping {
+func mustParseMapping(t *testing.T, mapping string) *container.Mapping {
 	parts := strings.SplitN(mapping, "->", 2)
 	if len(parts) != 2 {
 		t.Fatalf("invalid mapping %s", mapping)
 	}
-	addr, err := ParseAddress(parts[0])
+	addr, err := container.ParseAddress(parts[0])
 	if err != nil {
-		t.Fatal("invalid mapping address %s", parts[0])
+		t.Fatalf("invalid mapping address %s", parts[0])
 	}
-	port, err := ParsePort(parts[1])
+	port, err := container.ParsePort(parts[1])
 	if err != nil {
-		t.Fatal("invalid mapping port %s", parts[1])
+		t.Fatalf("invalid mapping port %s", parts[1])
 	}
-	return &Mapping{addr, port}
+	return &container.Mapping{
+		HostAddress:   addr,
+		ContainerPort: port,
+	}
 }
 
-func mustParseMappings(t *testing.T, mappingsStr string) []*Mapping {
-	mappings := []*Mapping{}
+func mustParseMappings(t *testing.T, mappingsStr string) []*container.Mapping {
+	mappings := []*container.Mapping{}
 	for _, part := range strings.Split(mappingsStr, ",") {
 		mappings = append(mappings, mustParseMapping(t, part))
 	}
@@ -53,14 +57,14 @@ func mustParseMappings(t *testing.T, mappingsStr string) []*Mapping {
 }
 
 type BeaconInput struct {
-	action    ContainerAction
-	container *Container
+	action    container.Action
+	container *container.Container
 	services  []BeaconService
 }
 
 type BeaconService struct {
 	name string
-	addr *Address
+	addr *container.Address
 }
 
 func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int) {
@@ -102,19 +106,22 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 		services := make(map[MockDiscoveryKey]MockDiscoveryValue, len(inputs))
 		for _, input := range inputs {
 			for _, inSvc := range input.services {
-				if input.action == ContainerAdd {
+				if input.action == container.Add {
 					key := MockDiscoveryKey{inSvc.name, input.container.ID}
 					value := MockDiscoveryValue{inSvc.addr, ttl, 1}
 					services[key] = value
 
 					t.Logf("emiting add for %+v\n", input.container)
-				} else if input.action == ContainerRemove {
+				} else if input.action == container.Remove {
 					key := MockDiscoveryKey{inSvc.name, input.container.ID}
 					delete(services, key)
 					t.Logf("emiting remove for %+v\n", input.container)
 				}
 			}
-			listener.Emit(&ContainerEvent{input.action, input.container})
+			listener.Emit(&container.Event{
+				Action:    input.action,
+				Container: input.container,
+			})
 		}
 
 		// verify services
@@ -134,10 +141,10 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 			}
 		}
 		if announceCalls != announcements {
-			t.Error("announce called %d times, not %d", announceCalls, announcements)
+			t.Errorf("announce called %d times, not %d", announceCalls, announcements)
 		}
 		if shutdownCalls != shutdowns {
-			t.Error("shutdown called %d times, not %d", shutdownCalls, shutdowns)
+			t.Errorf("shutdown called %d times, not %d", shutdownCalls, shutdowns)
 		}
 		if err := MockServicesEqual(services, discovery.Services, false); err != nil {
 			t.Error(err)
@@ -162,8 +169,13 @@ func testBeacon(t *testing.T, inputs []BeaconInput, announcements, shutdowns int
 
 func TestBeaconAddOne(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 0)
@@ -171,11 +183,21 @@ func TestBeaconAddOne(t *testing.T) {
 
 func TestBeaconAddDuplicate(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 0)
@@ -183,14 +205,29 @@ func TestBeaconAddDuplicate(t *testing.T) {
 
 func TestBeaconAddMultipleContainers(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerAdd,
-			&Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c2",
+				Environ:  []string{"SERVICES=radius:1643/udp"},
+				Hostname: "172.16.0.11",
+				Mappings: mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp"),
+			},
 			[]BeaconService{{"radius", mustParseAddress(t, "10.1.1.100:49001/udp")}}},
-		{ContainerAdd,
-			&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+		{container.Add,
+			&container.Container{
+				ID:       "c3",
+				Environ:  []string{"SERVICES=api:443/tcp"},
+				Hostname: "172.16.0.12",
+				Mappings: []*container.Mapping{},
+			},
 			[]BeaconService{{"api", mustParseAddress(t, "172.16.0.12:443/tcp")}}},
 	}
 	testBeacon(t, inputs, 3, 0)
@@ -198,8 +235,13 @@ func TestBeaconAddMultipleContainers(t *testing.T) {
 
 func TestBeaconNoService(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{}},
 	}
 	testBeacon(t, inputs, 0, 0)
@@ -207,11 +249,21 @@ func TestBeaconNoService(t *testing.T) {
 
 func TestBeaconBadHostname(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, ":49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, ":49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, BeaconHostname+":49000/tcp")}}},
-		{ContainerAdd,
-			&Container{"c2", []string{"SERVICES=www-ssl:443"}, "172.16.0.11", mustParseMappings(t, "0.0.0.0:49001/tcp->443/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c2",
+				Environ:  []string{"SERVICES=www-ssl:443"},
+				Hostname: "172.16.0.11",
+				Mappings: mustParseMappings(t, "0.0.0.0:49001/tcp->443/tcp"),
+			},
 			[]BeaconService{{"www-ssl", mustParseAddress(t, BeaconHostname+":49001/tcp")}}},
 	}
 	testBeacon(t, inputs, 2, 0)
@@ -219,11 +271,21 @@ func TestBeaconBadHostname(t *testing.T) {
 
 func TestBeaconAddMultipleServices(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80,www-ssl:443"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.100:49001/tcp")}}},
-		{ContainerAdd,
-			&Container{"c2", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.11", mustParseMappings(t, "10.1.1.101:49000/tcp->443/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c2",
+				Environ:  []string{"SERVICES=www:80,www-ssl:443"},
+				Hostname: "172.16.0.11",
+				Mappings: mustParseMappings(t, "10.1.1.101:49000/tcp->443/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "172.16.0.11:80/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.101:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 4, 0)
@@ -231,11 +293,21 @@ func TestBeaconAddMultipleServices(t *testing.T) {
 
 func TestRemoveMultipleServices(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80,www-ssl:443"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.100:49001/tcp")}}},
-		{ContainerRemove,
-			&Container{"c1", []string{"SERVICES=www:80,www-ssl:443"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp")},
+		{container.Remove,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80,www-ssl:443"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp,10.1.1.100:49001/tcp->443/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}, {"www-ssl", mustParseAddress(t, "10.1.1.100:49001/tcp")}}},
 	}
 	testBeacon(t, inputs, 2, 2)
@@ -243,11 +315,21 @@ func TestRemoveMultipleServices(t *testing.T) {
 
 func TestBeaconRemoveOne(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerRemove,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Remove,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 1)
@@ -255,14 +337,29 @@ func TestBeaconRemoveOne(t *testing.T) {
 
 func TestBeaconRemoveDuplicate(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerRemove,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Remove,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerRemove,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Remove,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
 	}
 	testBeacon(t, inputs, 1, 1)
@@ -270,20 +367,45 @@ func TestBeaconRemoveDuplicate(t *testing.T) {
 
 func TestBeaconRemoveMultipleContainers(t *testing.T) {
 	inputs := []BeaconInput{
-		{ContainerAdd,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerAdd,
-			&Container{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
+		{container.Add,
+			&container.Container{
+				ID:       "c2",
+				Environ:  []string{"SERVICES=radius:1643/udp"},
+				Hostname: "172.16.0.11",
+				Mappings: mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp"),
+			},
 			[]BeaconService{{"radius", mustParseAddress(t, "10.1.1.100:49001/udp")}}},
-		{ContainerAdd,
-			&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+		{container.Add,
+			&container.Container{
+				ID:       "c3",
+				Environ:  []string{"SERVICES=api:443/tcp"},
+				Hostname: "172.16.0.12",
+				Mappings: []*container.Mapping{},
+			},
 			[]BeaconService{{"api", mustParseAddress(t, "172.16.0.12:443/tcp")}}},
-		{ContainerRemove,
-			&Container{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
+		{container.Remove,
+			&container.Container{
+				ID:       "c1",
+				Environ:  []string{"SERVICES=www:80"},
+				Hostname: "172.16.0.10",
+				Mappings: mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp"),
+			},
 			[]BeaconService{{"www", mustParseAddress(t, "10.1.1.100:49000/tcp")}}},
-		{ContainerRemove,
-			&Container{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+		{container.Remove,
+			&container.Container{
+				ID:       "c3",
+				Environ:  []string{"SERVICES=api:443/tcp"},
+				Hostname: "172.16.0.12",
+				Mappings: []*container.Mapping{},
+			},
 			[]BeaconService{{"api", mustParseAddress(t, "172.16.0.12:443/tcp")}}},
 	}
 	testBeacon(t, inputs, 3, 2)
@@ -303,10 +425,10 @@ func TestBeaconHeartbeatAndClose(t *testing.T) {
 
 	defer close(listening)
 
-	containers := []*Container{
+	containers := []*container.Container{
 		{"c1", []string{"SERVICES=www:80"}, "172.16.0.10", mustParseMappings(t, "10.1.1.100:49000/tcp->80/tcp")},
 		{"c2", []string{"SERVICES=radius:1643/udp"}, "172.16.0.11", mustParseMappings(t, "10.1.1.100:49001/udp->1643/udp")},
-		{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*Mapping{}},
+		{"c3", []string{"SERVICES=api:443/tcp"}, "172.16.0.12", []*container.Mapping{}},
 	}
 
 	go func() {
@@ -320,8 +442,11 @@ func TestBeaconHeartbeatAndClose(t *testing.T) {
 			t.Fatal("timed out waiting for listener")
 		}
 
-		for _, container := range containers {
-			listener.Emit(&ContainerEvent{ContainerAdd, container})
+		for _, cntr := range containers {
+			listener.Emit(&container.Event{
+				Action:    container.Add,
+				Container: cntr,
+			})
 		}
 		time.Sleep(3 * time.Second)
 

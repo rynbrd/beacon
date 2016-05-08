@@ -1,7 +1,8 @@
-package main
+package beacon
 
 import (
 	"fmt"
+	"github.com/BlueDragonX/beacon/container"
 	"time"
 )
 
@@ -23,7 +24,7 @@ func NewMockDiscovery(actions chan ServiceAction) *MockDiscovery {
 }
 
 // Announce creates and adds a key/value pair to the Services map. No error is returned.
-func (m *MockDiscovery) Announce(name, container string, address *Address, ttl time.Duration) error {
+func (m *MockDiscovery) Announce(name, container string, address *container.Address, ttl time.Duration) error {
 	key := MockDiscoveryKey{name, container}
 	value, has := m.Services[key]
 	if has && value.Address.Equal(address) && value.TTL == ttl {
@@ -60,7 +61,7 @@ type MockDiscoveryKey struct {
 
 // MockDiscoveryValue is used as the value for the Services map in MockDiscovery.
 type MockDiscoveryValue struct {
-	Address *Address
+	Address *container.Address
 	TTL     time.Duration
 	Count   int
 }

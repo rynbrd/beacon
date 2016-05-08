@@ -1,7 +1,8 @@
-package main
+package etcd
 
 import (
 	"encoding/json"
+	"github.com/BlueDragonX/beacon/container"
 	"github.com/coreos/go-etcd/etcd"
 	"math"
 	"strings"
@@ -47,7 +48,7 @@ func NewEtcd(uris []string, prefix string, format ServiceFormat, tlsCert, tlsKey
 }
 
 // Announce a service.
-func (e *Etcd) Announce(name, container string, address *Address, ttl time.Duration) error {
+func (e *Etcd) Announce(name, container string, address *container.Address, ttl time.Duration) error {
 	var err error
 	var value string
 	path := e.joinPath(e.prefix, name, container)
@@ -55,9 +56,9 @@ func (e *Etcd) Announce(name, container string, address *Address, ttl time.Durat
 		ttlSecs := ttl.Seconds()
 		ttlInt := uint64(ttlSecs + math.Copysign(0.5, ttlSecs))
 		if _, err = e.client.Set(path, value, ttlInt); err == nil {
-			logger.Debugf("etcd set of '%s=%s' successful", path, value)
+			logger.Printf("etcd set of '%s=%s' successful", path, value)
 		} else {
-			logger.Errorf("etcd set of '%s=%s' failed: %s", path, value, err)
+			logger.Printf("etcd set of '%s=%s' failed: %s", path, value, err)
 		}
 	}
 	return err
@@ -68,9 +69,9 @@ func (e *Etcd) Shutdown(name, container string) error {
 	path := e.joinPath(e.prefix, name, container)
 	_, err := e.client.Delete(path, false)
 	if err == nil {
-		logger.Debugf("etcd rm of '%s' successful", path)
+		logger.Printf("etcd rm of '%s' successful", path)
 	} else {
-		logger.Errorf("etcd rm of '%s' failed: %s", path, err)
+		logger.Printf("etcd rm of '%s' failed: %s", path, err)
 	}
 	return err
 }
@@ -88,11 +89,11 @@ func (e *Etcd) cleanup() {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Debug("etcd cleanup started")
+			logger.Print("etcd cleanup started")
 			path := e.joinPath(e.prefix)
 			res, err := e.client.Get(path, false, false)
 			if err != nil {
-				logger.Errorf("etcd ls of %s failed: %s", e.prefix, err)
+				logger.Printf("etcd ls of %s failed: %s", e.prefix, err)
 				continue
 			}
 			if !res.Node.Dir {
@@ -103,7 +104,7 @@ func (e *Etcd) cleanup() {
 					e.rm(node.Key)
 				}
 			}
-			logger.Debug("etcd cleanup complete")
+			logger.Print("etcd cleanup complete")
 		case <-e.stopped:
 			return
 		}
@@ -113,9 +114,9 @@ func (e *Etcd) cleanup() {
 // rm removes a key or empty directory.
 func (e *Etcd) rm(path string) {
 	if _, err := e.client.DeleteDir(path); err == nil {
-		logger.Debugf("etcd rm of %s successful", path)
+		logger.Printf("etcd rm of %s successful", path)
 	} else {
-		logger.Debugf("etcd rm of %s failed: %s", path, err)
+		logger.Printf("etcd rm of %s failed: %s", path, err)
 	}
 }
 
@@ -132,7 +133,7 @@ func (e *Etcd) joinPath(args ...string) string {
 }
 
 // format an address for storage
-func (e *Etcd) formatAddress(addr *Address) (string, error) {
+func (e *Etcd) formatAddress(addr *container.Address) (string, error) {
 	switch e.format {
 	case JSONFormat:
 		data := struct {

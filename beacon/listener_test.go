@@ -1,8 +1,12 @@
-package main
+package beacon
+
+import (
+	"github.com/BlueDragonX/beacon/container"
+)
 
 // A test mock which implements the Listener inteface.
 type MockListener struct {
-	events    chan<- *ContainerEvent
+	events    chan<- *container.Event
 	listening chan<- bool
 }
 
@@ -13,7 +17,7 @@ func NewMockListener(listening chan<- bool) *MockListener {
 }
 
 // Emit a container event from the Listen channel.
-func (m *MockListener) Emit(event *ContainerEvent) {
+func (m *MockListener) Emit(event *container.Event) {
 	if m.events != nil {
 		m.events <- event
 	}
@@ -21,7 +25,7 @@ func (m *MockListener) Emit(event *ContainerEvent) {
 
 // Listen for events. Sets the internal events channel to `events` and sents
 // `true` on `listening`.
-func (m *MockListener) Listen(events chan<- *ContainerEvent) {
+func (m *MockListener) Listen(events chan<- *container.Event) {
 	m.events = events
 	if m.listening != nil {
 		m.listening <- true

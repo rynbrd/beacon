@@ -1,4 +1,4 @@
-package main
+package container
 
 import (
 	"testing"
@@ -82,30 +82,30 @@ func TestContainerMapping(t *testing.T) {
 	}
 }
 
-func TestParseContainerService(t *testing.T) {
+func TestParseService(t *testing.T) {
 	type testInput struct {
 		str  string
-		want *ContainerService
+		want *Service
 	}
 
 	testInputs := []testInput{
 		{"", nil},
 		{"example", nil},
-		{"example:80", &ContainerService{"example", &Port{80, "tcp"}}},
-		{"example:80/tcp", &ContainerService{"example", &Port{80, "tcp"}}},
-		{" example:80/tcp", &ContainerService{"example", &Port{80, "tcp"}}},
-		{"   example:80/tcp", &ContainerService{"example", &Port{80, "tcp"}}},
-		{"example:80/tcp ", &ContainerService{"example", &Port{80, "tcp"}}},
-		{"example:80/tcp   ", &ContainerService{"example", &Port{80, "tcp"}}},
-		{" example:80/tcp ", &ContainerService{"example", &Port{80, "tcp"}}},
-		{"   example:80/tcp  ", &ContainerService{"example", &Port{80, "tcp"}}},
-		{"example:1643/udp", &ContainerService{"example", &Port{1643, "udp"}}},
+		{"example:80", &Service{"example", &Port{80, "tcp"}}},
+		{"example:80/tcp", &Service{"example", &Port{80, "tcp"}}},
+		{" example:80/tcp", &Service{"example", &Port{80, "tcp"}}},
+		{"   example:80/tcp", &Service{"example", &Port{80, "tcp"}}},
+		{"example:80/tcp ", &Service{"example", &Port{80, "tcp"}}},
+		{"example:80/tcp   ", &Service{"example", &Port{80, "tcp"}}},
+		{" example:80/tcp ", &Service{"example", &Port{80, "tcp"}}},
+		{"   example:80/tcp  ", &Service{"example", &Port{80, "tcp"}}},
+		{"example:1643/udp", &Service{"example", &Port{1643, "udp"}}},
 		{":1643/udp", nil},
 		{":", nil},
 	}
 
 	for _, in := range testInputs {
-		svc, err := ParseContainerService(in.str)
+		svc, err := ParseService(in.str)
 		if in.want == nil && err == nil {
 			t.Errorf("no error for %s", in.str)
 		} else if in.want != nil {
