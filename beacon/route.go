@@ -2,6 +2,9 @@ package beacon
 
 // NewRoute creates a route from the provided filter and backend.
 func NewRoute(filter Filter, backend Backend) Route {
+	if filter == nil {
+		filter = &allFilter{}
+	}
 	return struct {
 		Filter
 		Backend

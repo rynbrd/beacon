@@ -1,7 +1,7 @@
 package beacon
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -19,7 +19,7 @@ func NewFilter(pattern string) (Filter, error) {
 		if len(parts) > 1 {
 			labels[parts[0]] = parts[1]
 		} else {
-			return nil, fmt.Errorf("invalid filter pattern: %s", pattern)
+			return nil, errors.Errorf("invalid filter pattern: %s", pattern)
 		}
 	}
 	return &labelFilter{labels: labels}, nil
@@ -41,5 +41,13 @@ func (f *labelFilter) MatchContainer(c *Container) bool {
 			return false
 		}
 	}
+	return true
+}
+
+// A filter that matches everything.
+type allFilter struct{}
+
+// MatchContainer returns true.
+func (*allFilter) MatchContainer(*Container) bool {
 	return true
 }

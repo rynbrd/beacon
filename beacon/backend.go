@@ -7,6 +7,7 @@ type Backend interface {
 	// panics it will fail through the Beacon Run function.
 	ProcessEvent(event *Event) error
 
-	// Close frees any resources associated with the backend.
+	// Close frees any resources associated with the backend. It blocks until
+	// the backend completes processing of all in-flight events.
 	Close() error
 }
