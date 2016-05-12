@@ -14,10 +14,6 @@ type Container struct {
 	// The label metadata attached to the container.
 	Labels map[string]string
 
-	// The hostname to use when communicating with the container. This is
-	// typically the private IP of the instance host.
-	Hostname string
-
 	// Network port bindings.
 	Bindings []*Binding
 }

@@ -69,8 +69,11 @@ func (b *MockBackend) Close() error {
 }
 
 func ContainersEqual(a *beacon.Container, b *beacon.Container) error {
-	if a.ID != b.ID || a.Service != b.Service || a.Hostname != b.Hostname {
+	if a.ID != b.ID {
 		return errors.Errorf("container.ID inequal: %s != %s", a.ID, b.ID)
+	}
+	if a.Service != b.Service {
+		return errors.Errorf("container.Service inequal: %s != %s", a.ID, b.ID)
 	}
 	if len(a.Labels) != len(b.Labels) {
 		return errors.Errorf("container.Labels inequal length: %d != %d", len(a.Labels), len(b.Labels))
@@ -134,7 +137,7 @@ func EventArraysEqual(a []*beacon.Event, b []*beacon.Event) error {
 	}
 	for n := range a {
 		if err := EventsEqual(a[n], b[n]); err != nil {
-			return errors.Wrapf(err, "events[%d] inequal: %s", n)
+			return errors.Wrapf(err, "events[%d] inequal", n)
 		}
 	}
 	return nil

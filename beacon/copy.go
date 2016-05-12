@@ -25,7 +25,6 @@ func CopyContainer(container *Container) *Container {
 		ID:       container.ID,
 		Service:  container.Service,
 		Labels:   CopyLabels(container.Labels),
-		Hostname: container.Hostname,
 		Bindings: CopyBindings(container.Bindings),
 	}
 }
