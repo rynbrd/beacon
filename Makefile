@@ -1,7 +1,7 @@
 name=beacon
 version=$(shell git describe --tags --dirty)
 
-gopkgs=./cmd/beacon ./beacon ./container ./docker ./etcd
+gopkgs=./cmd/beacon ./beacon ./docker ./sns
 
 export GOBIN=$(shell pwd)/bin
 export GOPATH=$(shell pwd)/.go
@@ -34,6 +34,9 @@ $(GOBIN)/beacon.static: $(project_path)
 
 test: $(project_path)
 	test -z "$(shell gofmt -s -l $(gopkgs))"
+	for gopkg in $(gopkgs); do \
+		golint -set_exit_status $$gopkg || exit 1; \
+	done
 	go vet $(gopkgs)
 	go get -d -t $(gopkgs)
 	go test -v -race $(gopkgs)
