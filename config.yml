@@ -1,0 +1,11 @@
+docker:
+  socket: unix:///var/run/docker.sock
+  hostip: 169.254.12.152
+  label: service
+
+backends:
+- sns:
+    region: us-east-1
+    topic: arn:aws:sns:us-east-1:698519295917:TestTopic
+  filter:
+    group: ops
