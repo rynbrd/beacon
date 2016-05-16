@@ -1,109 +1,138 @@
 package main
 
 import (
-	"github.com/BlueDragonX/beacon/beacon"
-	"github.com/BlueDragonX/beacon/docker"
-	"github.com/BlueDragonX/beacon/etcd"
-	"gopkg.in/BlueDragonX/go-settings.v1"
+	"flag"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"os"
-	"time"
 )
 
-var (
-	DefaultDockerURI       string        = "unix:///var/run/docker.sock"
-	DefaultDockerPoll      time.Duration = 30 * time.Second
-	DefaultEtcdURIs        []string      = []string{"http://localhost:4001/"}
-	DefaultEtcdPrefix      string        = "/beacon"
-	DefaultEtcdFormat      string        = "json"
-	DefaultBeaconHostname  string        = getHostname()
-	DefaultBeaconHeartbeat time.Duration = 30 * time.Second
-	DefaultBeaconTTL       time.Duration = 30 * time.Second
-	DefaultBeaconEnvVar    string        = "SERVICES"
-)
+// DefaultConfigFile is the default path to the config file.
+const DefaultConfigFile = "/etc/beacon.yml"
 
-func ConfigDocker(config *settings.Settings) *docker.Docker {
-	config, err := config.Object("docker")
-	if err == settings.KeyError {
-		config = settings.New()
-	} else if err != nil {
-		logger.Fatal("invalid 'docker' config object")
-	}
-	uri := config.StringDflt("uri", DefaultDockerURI)
-	poll := config.DurationDflt("poll", DefaultDockerPoll)
-	listener, err := docker.NewDocker(uri, poll, nil)
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
-	return listener
+// Docker runtime configuration.
+type Docker struct {
+	Socket string
+	HostIP string
+	Label  string
 }
 
-func ConfigEtcd(config *settings.Settings) *etcd.Etcd {
-	config, err := config.Object("etcd")
-	if err == settings.KeyError {
-		config = settings.New()
-	} else if err != nil {
-		logger.Fatal("invalid 'etcd' config object")
+// Validate the docker configuration.
+func (c *Docker) Validate() error {
+	if c == nil {
+		return errors.New("missing Docker config object")
 	}
-
-	uris := config.StringArrayDflt("uris", []string{})
-	if len(uris) == 0 {
-		uris = DefaultEtcdURIs
+	if c.Socket == "" {
+		return errors.New("Docker.Socket may not be empty")
 	}
+	if c.HostIP == "" {
+		return errors.New("Docker.HostIP may not be empty")
+	}
+	if c.Label == "" {
+		return errors.New("Docker.Label may not be empty")
+	}
+	return nil
+}
 
-	prefix := config.StringDflt("prefix", DefaultEtcdPrefix)
-	format := config.StringDflt("format", DefaultEtcdFormat)
-	tlsKey := config.StringDflt("tls-key", "")
-	tlsCert := config.StringDflt("tls-cert", "")
-	tlsCACert := config.StringDflt("tls-ca-cert", "")
+// SNS backend configuration.
+type SNS struct {
+	Region string
+	Topic  string
+}
 
-	if tlsKey != "" && tlsCert != "" && tlsCACert != "" {
-		for _, file := range []string{tlsKey, tlsCert, tlsCACert} {
-			if !fileIsReadable(file) {
-				logger.Fatalf("file '%s' is not readable", file)
-			}
+// Validate the SNS configuration.
+func (c *SNS) Validate() error {
+	if c == nil {
+		return errors.New("missing SNS config object")
+	}
+	if c.Region == "" {
+		return errors.New("SNS.Region may not be empty")
+	}
+	if c.Topic == "" {
+		return errors.New("SNS.Topic may not be empty")
+	}
+	return nil
+}
+
+// Backend configuration object.
+type Backend struct {
+	SNS    *SNS
+	Filter map[string]string
+}
+
+// Validate the backend configuration.
+func (c *Backend) Validate() error {
+	if c.SNS != nil {
+		return c.SNS.Validate()
+	}
+	return errors.New("backend not supported")
+}
+
+// Config holds Beacon configuration.
+type Config struct {
+	Backends []Backend
+	Docker   Docker
+}
+
+// Validate the Beacon configuration.
+func (c *Config) Validate() error {
+	if c == nil {
+		return errors.New("nil config object")
+	}
+	if err := c.Docker.Validate(); err != nil {
+		return err
+	}
+	if len(c.Backends) == 0 {
+		return errors.New("no backends configured")
+	}
+	for _, backend := range c.Backends {
+		if err := backend.Validate(); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
-	if format != string(etcd.JSONFormat) && format != string(etcd.AddressFormat) {
-		logger.Fatalf("etcd format '%s' is invalid", format)
+// DefaultConfig generates a default configuration.
+func DefaultConfig() *Config {
+	dockerSocket := os.Getenv("DOCKER_HOST")
+	if dockerSocket == "" {
+		dockerSocket = "unix:///var/run/docker.sock"
+	}
+	dockerHostIP := os.Getenv("DOCKER_IP")
+	if dockerHostIP == "" {
+		dockerHostIP = "127.0.0.1"
 	}
 
-	backend, err := etcd.NewEtcd(uris, prefix, etcd.ServiceFormat(format), tlsCert, tlsKey, tlsCACert)
+	return &Config{
+		Docker: Docker{
+			Socket: dockerSocket,
+			HostIP: dockerHostIP,
+		},
+		Backends: []Backend{},
+	}
+}
+
+// Configure Beacon. Loads configuration into a Config.
+func Configure(args []string) *Config {
+	var path string
+	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
+	flags.StringVar(&path, "config", DefaultConfigFile, "The path to the config file.")
+	flags.Parse(args[1:])
+
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		logger.Fatal(err.Error())
+		Logger.Fatalf("failed to read config %s: %s\n", path, err)
 	}
-	return backend
-}
-
-func ConfigBeacon(config *settings.Settings) *beacon.Beacon {
-	listener := ConfigDocker(config)
-	backend := ConfigEtcd(config)
-	config, err := config.Object("beacon")
-	if err == settings.KeyError {
-		config = settings.New()
-	} else if err != nil {
-		logger.Fatal("invalid 'beacon' config object")
+	config := DefaultConfig()
+	boop := map[interface{}]interface{}{}
+	yaml.Unmarshal(data, boop)
+	if err := yaml.Unmarshal(data, config); err != nil {
+		Logger.Fatalf("failed to parse config %s: %s\n", path, err)
 	}
-
-	return &beacon.Beacon{
-		Hostname:  config.StringDflt("hostname", DefaultBeaconHostname),
-		Heartbeat: config.DurationDflt("heartbeat", DefaultBeaconHeartbeat),
-		TTL:       config.DurationDflt("ttl", DefaultBeaconTTL),
-		EnvVar:    config.StringDflt("env-var", DefaultBeaconEnvVar),
-		Listeners: []beacon.Listener{listener},
-		Discovery: backend,
+	if err := config.Validate(); err != nil {
+		Logger.Fatalf("configuration invalid: %s\n", err)
 	}
-}
-
-func fileIsReadable(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func getHostname() string {
-	if hostname, err := os.Hostname(); err == nil {
-		return hostname
-	} else {
-		return "localhost"
-	}
+	return config
 }

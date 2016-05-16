@@ -1,88 +1,65 @@
 package main
 
 import (
-	"fmt"
-	"gopkg.in/BlueDragonX/go-log.v1"
-	"gopkg.in/BlueDragonX/go-settings.v1"
+	"github.com/BlueDragonX/beacon/beacon"
+	"github.com/BlueDragonX/beacon/docker"
+	"github.com/BlueDragonX/beacon/sns"
+	"log"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
-var logger *log.Logger = log.NewOrExit()
+// Logger is the application logger.
+var Logger = log.New(os.Stdout, "", 0)
 
-func configure(args []string) *settings.Settings {
-	// load configuration
-	options := ParseOptionsOrExit(args)
-	var config *settings.Settings
-	if _, err := os.Stat(options.Config); os.IsNotExist(err) {
-		config = settings.New()
-	} else if err == nil {
-		config = settings.LoadOrExit(options.Config)
-	} else {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+func init() {
+	beacon.Logger = Logger
+	docker.Logger = Logger
+}
 
-	// set config values from cli options
-	if options.Hostname != "" {
-		config.Set("beacon.hostname", options.Hostname)
-	}
-	if options.EnvVar != "" {
-		config.Set("beacon.env-var", options.EnvVar)
-	}
-	if options.Heartbeat.Nanoseconds() != 0 {
-		config.Set("beacon.heartbeat", options.Heartbeat)
-	}
-	if options.TTL.Nanoseconds() != 0 {
-		config.Set("beacon.ttl", options.TTL)
-	}
-	if len(options.Etcd) > 0 {
-		config.Set("etcd.uris", options.Etcd)
-	}
-	if options.EtcdPrefix != "" {
-		config.Set("etcd.prefix", options.EtcdPrefix)
-	}
-	if options.EtcdFormat != "" {
-		config.Set("etcd.format", options.EtcdFormat)
-	}
-	if options.Docker != "" {
-		config.Set("docker.uri", options.Docker)
-	}
-	if options.LogTarget != "" {
-		config.Set("logging.target", options.LogTarget)
-	}
-	if options.LogLevel != "" {
-		config.Set("logging.level", options.LogLevel)
+// NewBeacon creates a new Beacon from configuration.
+func NewBeacon(config *Config) (beacon.Beacon, error) {
+	docker, err := docker.New(
+		config.Docker.Socket,
+		config.Docker.HostIP,
+		config.Docker.Label,
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	// configure the logger
-	if logTarget, err := config.String("logging.target"); err == nil {
-		if logTargetObj, err := log.NewTarget(logTarget); err == nil {
-			logger.SetTarget(logTargetObj)
-		} else {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			os.Exit(1)
+	routes := make([]beacon.Route, len(config.Backends))
+	for n, backendCfg := range config.Backends {
+		if backendCfg.SNS != nil {
+			filter := beacon.NewFilter(backendCfg.Filter)
+			backend := sns.New(
+				backendCfg.SNS.Region,
+				backendCfg.SNS.Topic,
+			)
+			routes[n] = beacon.NewRoute(filter, backend)
 		}
 	}
-	if logLevel, err := config.String("logging.level"); err == nil {
-		logger.SetLevel(log.NewLevel(logLevel))
-	}
-	return config
+	return beacon.New(docker, routes)
 }
 
 func main() {
-	config := configure(os.Args)
-	beacon := ConfigBeacon(config)
+	config := Configure(os.Args)
+	bcn, err := NewBeacon(config)
+	if err != nil {
+		Logger.Fatalf("failed to initialize: %s", err)
+	}
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	signals := notifyOnStop()
 
+	Logger.Print("starting")
 	go func() {
 		<-signals
-		if err := beacon.Close(); err != nil {
-			logger.Fatal(err.Error())
+		if err := bcn.Close(); err != nil {
+			Logger.Fatalf("failed to shut down: %s", err)
 		}
 	}()
-	beacon.Run()
+
+	if err := bcn.Run(); err != nil {
+		Logger.Fatalf("failed to shut down: %s", err)
+	}
+	Logger.Print("stopped")
 }
