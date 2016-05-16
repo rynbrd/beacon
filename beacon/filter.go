@@ -5,10 +5,21 @@ import (
 	"strings"
 )
 
-// NewFilter creates a filter from the provided pattern. The pattern has the
+// NewFilter creates a new filter which returns true if a container has all of
+// the provided labels.
+func NewFilter(labels map[string]string) Filter {
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	return &labelFilter{
+		labels: labels,
+	}
+}
+
+// ParseFilter creates a filter from the provided pattern. The pattern has the
 // form 'label1=value1,label2=value2,...'. The container must match all of the
 // lable/value pairs. Only matching against labels is currently supported.
-func NewFilter(pattern string) (Filter, error) {
+func ParseFilter(pattern string) (Filter, error) {
 	if pattern == "" {
 		return &labelFilter{}, nil
 	}

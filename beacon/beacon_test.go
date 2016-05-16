@@ -153,10 +153,7 @@ func TestBeaconNewError(t *testing.T) {
 		t.Error("expected error for empty route list")
 	}
 
-	filter, err := beacon.NewFilter("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	filter := beacon.NewFilter(nil)
 	route := beacon.NewRoute(filter, NewBackend())
 	if _, err := beacon.New(nil, []beacon.Route{route}); err == nil {
 		t.Error("expected error for nil runtime")
@@ -499,12 +496,12 @@ func TestBeaconRunFilterBackends(t *testing.T) {
 	backend1 := NewBackend()
 	backend2 := NewBackend()
 
-	filter1, err := beacon.NewFilter("color=blue")
+	filter1, err := beacon.ParseFilter("color=blue")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	filter2, err := beacon.NewFilter("color=green")
+	filter2, err := beacon.ParseFilter("color=green")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -675,7 +672,7 @@ func TestBeaconContainers(t *testing.T) {
 		t.Error(err)
 	}
 
-	filter, err := beacon.NewFilter("color=blue")
+	filter, err := beacon.ParseFilter("color=blue")
 	if err != nil {
 		t.Fatal(err)
 	}

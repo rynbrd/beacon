@@ -6,11 +6,7 @@ import (
 )
 
 func TestFilterEmpty(t *testing.T) {
-	f, err := beacon.NewFilter("")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	f := beacon.NewFilter(nil)
 	containers := []*beacon.Container{
 		{Labels: map[string]string{}},
 		{Labels: map[string]string{"a": "aye"}},
