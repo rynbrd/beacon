@@ -1,103 +1,91 @@
 Beacon
 ======
-Service discovery for Docker and etcd.
-
 [![Build Status](https://travis-ci.org/BlueDragonX/beacon.svg?branch=master)](https://travis-ci.org/BlueDragonX/beacon)
+
+Beacon pipes container start/stop events to various systems. Currently it supports Docker as its runtime and Amazon SNS as its backend. More runtimes and backends are currently planned.
 
 How It Works
 ------------
-Beacon announces services hosted in containers. A container publishes a service by setting an environment variable. By default this variable is `SERVICES`. You can change this with the `beacon.env-var` config file directive.
+Beacon listens for events on the configured runtime. When an event is receieved it evaluates a filter expression attached to each of the configured backends. The event is processed by each backend whose filter matches the event.
 
-The format of the services value is `name:port/protocol`. The `name` is the name of the service to publish. The `port` is the port on which the container listens for connections. The `protocol` is either 'udp' or 'tcp'. If absent Beacon chooses 'tcp' for you. Publish more than one service by separating them with commas.
+Beacon allows containers to be grouped into services. The runtime is responsible for identifying the service a container is part of.
 
-When Docker starts a container Beacon will detect this and read the services variable. Beacon looks up any port mappings at this stage. Should a mapping exist Beacon uses the hostname of the parent system and the mapped port in its announcement. Without a mapping Beacon will use the IP of the container and the port defined in the services variable. Beacon formats the final address as `hostname:port` for storage in etcd.
+Building
+--------
+Beacon uses Make to drive the test and build process.
 
-Beacon represents a service in etcd as a directory of keys. Each key contains an address where the service is accessible. The name of a key is the ID of the container which published that address.
+To test Beacon:
 
-The name of service directory is the name in the container's services variable. Beacon locates all service directories under a `prefix`. The prefix defaults to `/beacon`. Set the `etcd.prefix` config value to change it.
+	make test
 
-Beacon applies a TTL to all service keys. The TTL refreshes at regular intervals. If Beacon (or the entire server) dies then etcd cleans up the services when their TTL's expire.
+to build Beacon:
 
-Command Line 
-------------
-Beacon takes a few commandline options. These are:
+	make
 
-* `config` - The path to the config file. Defaults to /etc/beacon.yml.
-* `var` - The name of the service variable.
-* `hostname` - The hostname to use when announcing mapped ports.
-* `heartbeat` - How often to refresh service TTL's.
-* `ttl` - How long to keep a service after missing a heartbeat.
-* `etcd` - The etcd endpoint. May be provided multiple times.
-* `prefix` - The root of all etcd keys.
-* `docker` - The Docker endpoint.
+The build will create a binary called `beacon` in a newly created `bin` directory.
+
+Running
+-------
+Beacon takes a single command line flag: `-config`. It should be the path to the config file. If not set the default config file is at `/etc/beacon.yml`.
 
 Config File
 -----------
-I will lead with an example:
+The config file is formatted as [YAML][3]. It has sections for the runtime (docker) and backends. An example config file is available [here][2].
 
-	# Example config.
-	beacon:
-      # Used when a mapped port does not have a reachable IP.
-	  hostname: test.example.net
+Runtimes
+--------
+Currently Beacon supports a single runtime: Docker.
 
-	  # Refresh the services in etcd every two minutes.
-	  heartbeat: 120
+The Docker runtime is configured with a socket, host IP, and label. The socket is of type `unix://` or `tcp://` and is used to connect to the Docker daemon. Port bindings which listen on 0.0.0.0 are assigned the host IP. Lastly the label is the name of the lable containing the name of the service. Events are ignored for containers which do not have this label.
 
-	  # Expire the service after 30 seconds if no heartbeat has been received.
-	  ttl: 30
+A config file snippet for Docker:
 
 	docker:
-	  # connect to docker here
-	  uri: unix:///var/run/docker.sock
+	  socket: unix:///var/run/docker.sock
+	  hostip: 169.254.12.152
+	  label: service
 
-	etcd:
-	  # connect to etcd here
-	  uris:
-	  - http://1.etcd.example.net:4001
-	  - http://2.etcd.example.net:4001
-	  prefix: /services
+Backends
+--------
+Currently Beacon supports a single backend: SNS.
 
-	logging:
-	  # enable syslog
-	  target: syslog
+The SNS backend queues events to an AWS SNS topic. The SNS backend is configured with a region and topic ARN.
 
-	  # turn on debug logging
-	  level: debug
+A config file snippet for SNS:
 
-As you can see the configuration file is YAML. It consists of four appropriately named sections: `beacon`, `docker`, `etcd`, and `logging`. All values have defaults. The configuration file is not required. If absent all values will be set to their defaults.
+	backends:
+	- sns:
+		region: us-east-1
+		topic: arn:aws:sns:us-east-1:698519295917:TestTopic
+	  filter:
+		group: ops
 
-### beacon
-This section contains process wide configuration. The following directive are available:
+The SNS message is a JSON encoded event. An example follows:
 
-* `hostname` - The hostname to use when announcing mapped ports.
-* `heartbeat` - How often to refresh service TTL's. Default `30s`.
-* `ttl` - How long to keep a service after missing a heartbeat. Default `30s`.
-* `env-var` - The name of the services variable. Default `SERVICES`.
-
-### docker
-This section configures the Docker integration.
-
-* `uri` - Connect to Docker here. Default `unix:///var/run/docker.sock`.
-* `poll` - Beacon polls Docker at this interval to retrieve missed events as a fail-safe. Default `30s`.
-
-### etcd
-This section configures the etcd integration.
-
-* `uris` - Connect to etcd here. This is a list. Default `[ "http://localhost:4001/" ]`.
-* `prefix` - The directory under which to store service directories. Default `/beacon`.
-* `protocol` - If `true` then etcd will store addresses in the form `hostname:port/protocol`. Default `false`.
-* `tls-key` - Path to an SSL key. Required to enable TLS.
-* `tls-cert` - Path to an SSL cert. Required to enable TLS.
-* `tls-ca-cert` - Path to an SSL CA cert. Required to enable TLS.
-
-### logging
-This section configures the logger.
-
-* `target` - Log to this target. Default `stderr`.
-* `level` - Only log at or above this level. Allowed values are `debug`, `info`, and `error. Default `info`.
+	{
+		"Action": "start",
+		"Container": {
+			"ID": "512b64138152",
+			"Service": "www",
+			"Labels": {
+				"service": "www",
+				"service_port": "80",
+			},
+			"Bindings": [
+				{
+					"HostIP": "169.254.12.152",
+					"HostPort": 54698,
+					"ContainerPort": 80,
+					"Protocol": "tcp"
+				}
+			]
+		}
+	}
 
 License
 -------
 Copyright (c) 2015 Ryan Bourgeois. Licensed under BSD-Modified. See the [LICENSE][1] file for a copy of the license.
 
-[1]: https://raw.githubusercontent.com/BlueDragonX/beacon/master/LICENSE "Beacon License"
+[1]: https://raw.githubusercontent.com/BlueDragonX/beacon/master/LICENSE "License"
+[2]: https://raw.githubusercontent.com/BlueDragonX/beacon/master/config.yml "Example Config File"
+[3]: http://yaml.org/ "YAML"
