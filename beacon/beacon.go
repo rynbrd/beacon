@@ -37,7 +37,7 @@ type Beacon interface {
 	//
 	// The runtime channel can be closed by calling Close either on Beacon or
 	// by calling Close on the runtime directly. Beacon's Close method simply
-	// wraps the runtime's Close method. 
+	// wraps the runtime's Close method.
 	//
 	// Run will drain the channel of events before calling Close on each of the
 	// backends. It then exits. An error is returned during if a failure occurs

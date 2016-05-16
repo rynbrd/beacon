@@ -100,7 +100,7 @@ func ContainerSetsEqual(a []*beacon.Container, b []*beacon.Container) error {
 		return errors.Errorf("container sets inequal length: %d != %d", len(a), len(b))
 	}
 
-	newSet := func(arr []*beacon.Container) map[string]*beacon.Container{
+	newSet := func(arr []*beacon.Container) map[string]*beacon.Container {
 		set := make(map[string]*beacon.Container, len(arr))
 		for _, cntr := range arr {
 			set[cntr.ID] = cntr
@@ -191,14 +191,15 @@ func TestBeaconRunOneBackend(t *testing.T) {
 					"a": "aye",
 					"b": "bee",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -233,14 +234,15 @@ func TestBeaconRunOneBackend(t *testing.T) {
 					"a": "aye",
 					"b": "bee",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -257,14 +259,15 @@ func TestBeaconRunOneBackend(t *testing.T) {
 					"a": "eh",
 					"c": "see",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -281,14 +284,15 @@ func TestBeaconRunOneBackend(t *testing.T) {
 					"a": "eh",
 					"c": "see",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -350,14 +354,15 @@ func TestBeaconRunTwoBackends(t *testing.T) {
 					"a": "aye",
 					"b": "bee",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -392,14 +397,15 @@ func TestBeaconRunTwoBackends(t *testing.T) {
 					"a": "aye",
 					"b": "bee",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -416,14 +422,15 @@ func TestBeaconRunTwoBackends(t *testing.T) {
 					"a": "eh",
 					"c": "see",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -440,14 +447,15 @@ func TestBeaconRunTwoBackends(t *testing.T) {
 					"a": "eh",
 					"c": "see",
 				},
-				Hostname: "localhost",
 				Bindings: []*beacon.Binding{
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56291,
 						ContainerPort: 80,
 						Protocol:      beacon.TCP,
 					},
 					{
+						HostIP:        "127.0.0.1",
 						HostPort:      56292,
 						ContainerPort: 443,
 						Protocol:      beacon.TCP,
@@ -526,7 +534,6 @@ func TestBeaconRunFilterBackends(t *testing.T) {
 		Labels: map[string]string{
 			"color": "blue",
 		},
-		Hostname: "localhost",
 		Bindings: []*beacon.Binding{},
 	}
 
@@ -536,29 +543,28 @@ func TestBeaconRunFilterBackends(t *testing.T) {
 		Labels: map[string]string{
 			"color": "green",
 		},
-		Hostname: "localhost",
 		Bindings: []*beacon.Binding{},
 	}
 
 	queueEvents := []*beacon.Event{
 		{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container1,
 		},
 		{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container2,
 		},
 	}
 	wantBlueEvents := []*beacon.Event{
 		{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container1,
 		},
 	}
 	wantGreenEvents := []*beacon.Event{
 		{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container2,
 		},
 	}
@@ -619,7 +625,6 @@ func TestBeaconContainers(t *testing.T) {
 		Labels: map[string]string{
 			"color": "red",
 		},
-		Hostname: "localhost",
 		Bindings: []*beacon.Binding{},
 	}
 
@@ -629,7 +634,6 @@ func TestBeaconContainers(t *testing.T) {
 		Labels: map[string]string{
 			"color": "green",
 		},
-		Hostname: "localhost",
 		Bindings: []*beacon.Binding{},
 	}
 
@@ -639,26 +643,25 @@ func TestBeaconContainers(t *testing.T) {
 		Labels: map[string]string{
 			"color": "blue",
 		},
-		Hostname: "localhost",
 		Bindings: []*beacon.Binding{},
 	}
 
 	go func() {
 		runtime.Events <- &beacon.Event{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container1,
 		}
 		runtime.Events <- &beacon.Event{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container2,
 		}
 		runtime.Events <- &beacon.Event{
-			Action: beacon.Start,
+			Action:    beacon.Start,
 			Container: container3,
 		}
 	}()
 
-	if _, err := backend.WaitForEvents(3, 5 * time.Second); err != nil {
+	if _, err := backend.WaitForEvents(3, 5*time.Second); err != nil {
 		t.Fatal(err)
 	}
 

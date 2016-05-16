@@ -58,14 +58,15 @@ func TestCopyContainer(t *testing.T) {
 			"a": "aye",
 			"b": "bee",
 		},
-		Hostname: "localhost",
 		Bindings: []*beacon.Binding{
 			{
+				HostIP:        "127.0.0.1",
 				HostPort:      56291,
 				ContainerPort: 80,
 				Protocol:      beacon.TCP,
 			},
 			{
+				HostIP:        "127.0.0.1",
 				HostPort:      56292,
 				ContainerPort: 443,
 				Protocol:      beacon.TCP,
@@ -107,14 +108,15 @@ func TestCopyEvent(t *testing.T) {
 				"a": "aye",
 				"b": "bee",
 			},
-			Hostname: "localhost",
 			Bindings: []*beacon.Binding{
 				{
+					HostIP:        "127.0.0.1",
 					HostPort:      56291,
 					ContainerPort: 80,
 					Protocol:      beacon.TCP,
 				},
 				{
+					HostIP:        "127.0.0.1",
 					HostPort:      56292,
 					ContainerPort: 443,
 					Protocol:      beacon.TCP,
