@@ -24,6 +24,7 @@ func NewBeacon(config *Config) (beacon.Beacon, error) {
 		config.Docker.Socket,
 		config.Docker.HostIP,
 		config.Docker.Label,
+		config.Docker.StopOnExit,
 	)
 	if err != nil {
 		return nil, err

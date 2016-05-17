@@ -175,7 +175,7 @@ func TestNew(t *testing.T) {
 	defer daemon.Close()
 
 	hostIP := "10.1.1.100"
-	runtime, err := docker.New(daemon.URL(), hostIP, "service")
+	runtime, err := docker.New(daemon.URL(), hostIP, "service", false)
 	if err != nil {
 		t.Error(err)
 	} else if err := runtime.Close(); err != nil {
@@ -191,7 +191,7 @@ func TestOneContainer(t *testing.T) {
 	defer daemon.Close()
 
 	hostIP := "10.1.1.100"
-	runtime, err := docker.New(daemon.URL(), hostIP, "service")
+	runtime, err := docker.New(daemon.URL(), hostIP, "service", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestTwoContainers(t *testing.T) {
 	defer daemon.Close()
 
 	hostIP := "10.1.1.100"
-	runtime, err := docker.New(daemon.URL(), hostIP, "service")
+	runtime, err := docker.New(daemon.URL(), hostIP, "service", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +363,7 @@ func TestRunIgnoredContainers(t *testing.T) {
 	defer daemon.Close()
 
 	hostIP := "10.1.1.100"
-	runtime, err := docker.New(daemon.URL(), hostIP, "service")
+	runtime, err := docker.New(daemon.URL(), hostIP, "service", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +457,7 @@ func TestExistingContainer(t *testing.T) {
 	defer daemon.Close()
 
 	hostIP := "10.1.1.100"
-	runtime, err := docker.New(daemon.URL(), hostIP, "service")
+	runtime, err := docker.New(daemon.URL(), hostIP, "service", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,6 +516,82 @@ func TestExistingContainer(t *testing.T) {
 				Container: &beacon.Container{ID: container.ID},
 			})
 		}
+	}()
+
+	haveEvents, err := WaitForEvents(ch, len(wantContainers)*2, 30*time.Second)
+	if err != nil {
+		t.Fatalf("failed waiting for events, received %d: %s", len(haveEvents), err)
+	}
+	wg.Wait()
+
+	if err := EventArraysEqual(haveEvents, wantEvents, false, true); err != nil {
+		t.Error(err)
+	}
+	for _, event := range haveEvents {
+		for _, binding := range event.Container.Bindings {
+			if binding.HostPort == 0 {
+				t.Errorf("event {Action:%s Container:%s} has binding with HostPort of 0", event.Action, event.Container.ID)
+			}
+		}
+	}
+}
+
+func TestStopOnClose(t *testing.T) {
+	daemon, err := DockerSetup()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer daemon.Close()
+
+	hostIP := "10.1.1.100"
+	runtime, err := docker.New(daemon.URL(), hostIP, "service", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch, err := runtime.EmitEvents()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantService := "test"
+	wantContainers := []*beacon.Container{
+		{
+			Service: wantService,
+			Labels: map[string]string{
+				"service": wantService,
+				"test":    "TestOneContainer",
+			},
+			Bindings: []*beacon.Binding{
+				{HostIP: "127.0.0.1", HostPort: 0, ContainerPort: 80, Protocol: beacon.TCP},
+			},
+		},
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	wantEvents := []*beacon.Event{}
+	go func() {
+		defer wg.Done()
+		for _, container := range wantContainers {
+			if id, err := StartContainer(daemon, container.Bindings, container.Labels); err != nil {
+				t.Fatal(err)
+			} else {
+				container.ID = id
+				t.Logf("container %s started", container.ID)
+				wantEvents = append(wantEvents, &beacon.Event{
+					Action:    beacon.Start,
+					Container: container,
+				}, &beacon.Event{
+					Action: beacon.Stop,
+					Container: &beacon.Container{
+						ID: id,
+					},
+				})
+			}
+		}
+		time.Sleep(5 * time.Second)
+		runtime.Close()
 	}()
 
 	haveEvents, err := WaitForEvents(ch, len(wantContainers)*2, 30*time.Second)

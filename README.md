@@ -45,6 +45,14 @@ A config file snippet for Docker:
 	  hostip: 169.254.12.152
 	  label: service
 
+The Docker runtime can be configured to send stop events for all running containers when Beacon stops. This is done by setting the `stop-on-exit` value to true:
+
+	docker:
+	  socket: unix:///var/run/docker.sock
+	  hostip: 169.254.12.152
+	  label: service
+	  stop-on-exit: true
+
 Backends
 --------
 Currently Beacon supports two backends: `sns` and `debug`.

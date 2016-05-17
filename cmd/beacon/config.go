@@ -8,14 +8,26 @@ import (
 	"os"
 )
 
-// DefaultConfigFile is the default path to the config file.
-const DefaultConfigFile = "/etc/beacon.yml"
+const (
+	// DefaultConfigFile is the default path to the config file.
+	DefaultConfigFile = "/etc/beacon.yml"
+
+	// DefaultDockerSocket is used if no docker.socket is set.
+	DefaultDockerSocket = "unix:///var/run/docker.sock"
+
+	// DefaultDockerHostIP is used if no docker.host-ip is set.
+	DefaultDockerHostIP = "127.0.0.1"
+
+	// DefaultDockerStopOnExit is used if no docker.stop-on-exit is set.
+	DefaultDockerStopOnExit = false
+)
 
 // Docker runtime configuration.
 type Docker struct {
-	Socket string
-	HostIP string
-	Label  string
+	Socket     string
+	HostIP     string
+	Label      string
+	StopOnExit bool `yaml:"stop-on-exit"`
 }
 
 // Validate the docker configuration.
@@ -109,17 +121,18 @@ func (c *Config) Validate() error {
 func DefaultConfig() *Config {
 	dockerSocket := os.Getenv("DOCKER_HOST")
 	if dockerSocket == "" {
-		dockerSocket = "unix:///var/run/docker.sock"
+		dockerSocket = DefaultDockerSocket
 	}
 	dockerHostIP := os.Getenv("DOCKER_IP")
 	if dockerHostIP == "" {
-		dockerHostIP = "127.0.0.1"
+		dockerHostIP = DefaultDockerHostIP
 	}
 
 	return &Config{
 		Docker: Docker{
-			Socket: dockerSocket,
-			HostIP: dockerHostIP,
+			Socket:     dockerSocket,
+			HostIP:     dockerHostIP,
+			StopOnExit: DefaultDockerStopOnExit,
 		},
 		Backends: []Backend{},
 	}

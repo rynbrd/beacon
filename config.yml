@@ -2,6 +2,7 @@ docker:
   socket: unix:///var/run/docker.sock
   hostip: 169.254.12.152
   label: service
+  stop-on-exit: false
 
 backends:
 - sns:
