@@ -25,7 +25,7 @@ const (
 // Docker runtime configuration.
 type Docker struct {
 	Socket     string
-	HostIP     string
+	HostIP     string `yaml:"host-ip"`
 	Label      string
 	StopOnExit bool `yaml:"stop-on-exit"`
 }
