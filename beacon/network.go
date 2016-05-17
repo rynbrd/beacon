@@ -20,3 +20,13 @@ type Binding struct {
 	ContainerPort int      // The port the container is listening on.
 	Protocol      Protocol // The protocol the port is configured for.
 }
+
+// Equal returns true if this binding is equal to another.
+func (a *Binding) Equal(b *Binding) bool {
+	if a == nil && b == nil {
+		return true
+	} else if a == nil || b == nil {
+		return false
+	}
+	return a.HostIP == b.HostIP && a.HostPort == b.HostPort && a.ContainerPort == b.ContainerPort && a.Protocol == b.Protocol
+}
