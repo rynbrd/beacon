@@ -21,12 +21,12 @@ type Binding struct {
 	Protocol      Protocol // The protocol the port is configured for.
 }
 
-// Equal returns true if this binding is equal to another.
-func (a *Binding) Equal(b *Binding) bool {
-	if a == nil && b == nil {
+// Equal returns true if this Binding is equal to another.
+func (b *Binding) Equal(c *Binding) bool {
+	if b == nil && c == nil {
 		return true
-	} else if a == nil || b == nil {
+	} else if b == nil || c == nil {
 		return false
 	}
-	return a.HostIP == b.HostIP && a.HostPort == b.HostPort && a.ContainerPort == b.ContainerPort && a.Protocol == b.Protocol
+	return b.HostIP == c.HostIP && b.HostPort == c.HostPort && b.ContainerPort == c.ContainerPort && b.Protocol == c.Protocol
 }

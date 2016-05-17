@@ -108,7 +108,7 @@ func ContainersEqual(a *beacon.Container, b *beacon.Container) error {
 	}
 	for k, v1 := range a.Labels {
 		if v2, ok := b.Labels[k]; !ok || v1 != v2 {
-			return errors.Errorf("container.Lables[%s] inequal: %s != %s", k, v1, v2)
+			return errors.Errorf("container.Labels[%s] inequal: %s != %s", k, v1, v2)
 		}
 	}
 	if len(a.Bindings) != len(b.Bindings) {

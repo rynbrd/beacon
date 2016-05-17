@@ -22,6 +22,11 @@ const (
 	DefaultDockerStopOnExit = false
 )
 
+const (
+	envDockerSocket = "DOCKER_HOST"
+	envDockerHostIP = "DOCKER_IP"
+)
+
 // Docker runtime configuration.
 type Docker struct {
 	Socket     string
@@ -119,19 +124,10 @@ func (c *Config) Validate() error {
 
 // DefaultConfig generates a default configuration.
 func DefaultConfig() *Config {
-	dockerSocket := os.Getenv("DOCKER_HOST")
-	if dockerSocket == "" {
-		dockerSocket = DefaultDockerSocket
-	}
-	dockerHostIP := os.Getenv("DOCKER_IP")
-	if dockerHostIP == "" {
-		dockerHostIP = DefaultDockerHostIP
-	}
-
 	return &Config{
 		Docker: Docker{
-			Socket:     dockerSocket,
-			HostIP:     dockerHostIP,
+			Socket:     DefaultDockerSocket,
+			HostIP:     DefaultDockerHostIP,
 			StopOnExit: DefaultDockerStopOnExit,
 		},
 		Backends: []Backend{},
@@ -140,15 +136,18 @@ func DefaultConfig() *Config {
 
 // Configure Beacon. Loads configuration into a Config.
 func Configure(args []string) *Config {
-	var path string
+	var path, dockerSocket, dockerHostIP string
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 	flags.StringVar(&path, "config", DefaultConfigFile, "The path to the config file.")
+	flags.StringVar(&dockerSocket, "docker-socket", DefaultDockerSocket, "The Docker socket to connect to.")
+	flags.StringVar(&dockerHostIP, "docker-host-ip", DefaultDockerHostIP, "The Docker host IP to advertise.")
 	flags.Parse(args[1:])
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		Logger.Fatalf("failed to read config %s: %s\n", path, err)
 	}
+
 	config := DefaultConfig()
 	boop := map[interface{}]interface{}{}
 	yaml.Unmarshal(data, boop)
@@ -158,5 +157,22 @@ func Configure(args []string) *Config {
 	if err := config.Validate(); err != nil {
 		Logger.Fatalf("configuration invalid: %s\n", err)
 	}
+
+	// configure docker socket from cli/env
+	if os.Getenv(envDockerSocket) != "" {
+		dockerSocket = os.Getenv(envDockerSocket)
+	}
+	if dockerSocket != DefaultDockerSocket {
+		config.Docker.Socket = dockerSocket
+	}
+
+	// configure docker host ip from cli/env
+	if os.Getenv(envDockerHostIP) != "" {
+		dockerHostIP = os.Getenv(envDockerHostIP)
+	}
+	if dockerHostIP != DefaultDockerHostIP {
+		config.Docker.HostIP = dockerHostIP
+	}
+
 	return config
 }

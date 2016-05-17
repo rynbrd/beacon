@@ -19,21 +19,21 @@ type Container struct {
 }
 
 // Equal returns true if this container is equal to another.
-func (a *Container) Equal(b *Container) bool {
-	if a == nil && b == nil {
+func (c *Container) Equal(b *Container) bool {
+	if c == nil && b == nil {
 		return true
-	} else if a == nil || b == nil {
+	} else if c == nil || b == nil {
 		return false
 	}
-	if a.ID != b.ID || a.Service != b.Service || len(a.Labels) != len(b.Labels) || len(a.Bindings) != len(b.Bindings) {
+	if c.ID != b.ID || c.Service != b.Service || len(c.Labels) != len(b.Labels) || len(c.Bindings) != len(b.Bindings) {
 		return false
 	}
-	for name, val1 := range a.Labels {
+	for name, val1 := range c.Labels {
 		if val2, ok := b.Labels[name]; !ok || val1 != val2 {
 			return false
 		}
 	}
-	for n, binding1 := range a.Bindings {
+	for n, binding1 := range c.Bindings {
 		if !binding1.Equal(b.Bindings[n]) {
 			return false
 		}

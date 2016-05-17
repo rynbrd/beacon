@@ -73,14 +73,14 @@ func ContainersEqual(a *beacon.Container, b *beacon.Container) error {
 		return errors.Errorf("container.ID inequal: %s != %s", a.ID, b.ID)
 	}
 	if a.Service != b.Service {
-		return errors.Errorf("container.Service inequal: %s != %s", a.ID, b.ID)
+		return errors.Errorf("container.Service inequal: %s != %s", a.Service, b.Service)
 	}
 	if len(a.Labels) != len(b.Labels) {
 		return errors.Errorf("container.Labels inequal length: %d != %d", len(a.Labels), len(b.Labels))
 	}
 	for k, v1 := range a.Labels {
 		if v2, ok := b.Labels[k]; !ok || v1 != v2 {
-			return errors.Errorf("container.Lables[%s] inequal: %s != %s", k, v1, v2)
+			return errors.Errorf("container.Labels[%s] inequal: %s != %s", k, v1, v2)
 		}
 	}
 	if len(a.Bindings) != len(b.Bindings) {
@@ -207,10 +207,25 @@ func TestBeaconRunOneBackend(t *testing.T) {
 		{
 			Action: beacon.Update,
 			Container: &beacon.Container{
-				ID: "123456",
+				ID:      "123456",
+				Service: "example",
 				Labels: map[string]string{
 					"a": "eh",
 					"c": "see",
+				},
+				Bindings: []*beacon.Binding{
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56291,
+						ContainerPort: 80,
+						Protocol:      beacon.TCP,
+					},
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56292,
+						ContainerPort: 443,
+						Protocol:      beacon.TCP,
+					},
 				},
 			},
 		},
@@ -370,10 +385,25 @@ func TestBeaconRunTwoBackends(t *testing.T) {
 		{
 			Action: beacon.Update,
 			Container: &beacon.Container{
-				ID: "123456",
+				ID:      "123456",
+				Service: "example",
 				Labels: map[string]string{
 					"a": "eh",
 					"c": "see",
+				},
+				Bindings: []*beacon.Binding{
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56291,
+						ContainerPort: 80,
+						Protocol:      beacon.TCP,
+					},
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56292,
+						ContainerPort: 443,
+						Protocol:      beacon.TCP,
+					},
 				},
 			},
 		},

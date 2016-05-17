@@ -95,37 +95,39 @@ func (b *beacon) handle(event *Event) error {
 
 	var backendEvent *Event
 	switch event.Action {
-	case Start:
-		container := CopyContainer(event.Container)
-		b.containers[event.Container.ID] = container
-		backendEvent = &Event{
-			Action:    event.Action,
-			Container: container,
+	case Start, Update:
+		oldContainer, exists := b.containers[event.Container.ID]
+		if !exists {
+			// container does not exist and needs to be started
+			newContainer := CopyContainer(event.Container)
+			b.containers[event.Container.ID] = newContainer
+			backendEvent = &Event{
+				Action:    Start,
+				Container: newContainer,
+			}
+		} else if !event.Container.Equal(oldContainer) {
+			// container exists and needs to be updated
+			newContainer := CopyContainer(event.Container)
+			b.containers[event.Container.ID] = newContainer
+			backendEvent = &Event{
+				Action:    Update,
+				Container: newContainer,
+			}
+		} else {
+			// no change to an existing container
+			return nil
 		}
 	case Stop:
-		if container, ok := b.containers[event.Container.ID]; ok {
+		if oldContainer, exists := b.containers[event.Container.ID]; exists {
+			// container exists and needs to be stopped
 			delete(b.containers, event.Container.ID)
 			backendEvent = &Event{
 				Action:    event.Action,
-				Container: container,
+				Container: oldContainer,
 			}
 		} else {
+			// container already stopped
 			return nil
-		}
-	case Update:
-		if container, ok := b.containers[event.Container.ID]; ok {
-			container.Labels = CopyLabels(event.Container.Labels)
-			backendEvent = &Event{
-				Action:    event.Action,
-				Container: container,
-			}
-		} else {
-			container := CopyContainer(event.Container)
-			b.containers[event.Container.ID] = container
-			backendEvent = &Event{
-				Action:    event.Action,
-				Container: container,
-			}
 		}
 	default:
 		return errors.Errorf("invalid action %s on container %s", event.Action, event.Container.ID)
