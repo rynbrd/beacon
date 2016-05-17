@@ -2,7 +2,7 @@ package docker
 
 import (
 	"github.com/BlueDragonX/beacon/beacon"
-	"github.com/fsouza/go-dockerclient"
+	dockerclient "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"strconv"
 	"sync"
@@ -24,8 +24,8 @@ var (
 //
 // If stopOnClose is true then stop events will be queued for each running
 // container when Close is called.
-func New(endpoint string, hostIP, serviceLabel string, stopOnClose bool) (*Docker, error) {
-	client, err := docker.NewClient(endpoint)
+func New(endpoint string, hostIP, serviceLabel string, stopOnClose bool) (beacon.Runtime, error) {
+	client, err := dockerclient.NewClient(endpoint)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create docker client")
 	}
@@ -33,7 +33,7 @@ func New(endpoint string, hostIP, serviceLabel string, stopOnClose bool) (*Docke
 		return nil, errors.Errorf("invalid hostIP %s", hostIP)
 	}
 
-	return &Docker{
+	return &docker{
 		client:       client,
 		hostIP:       hostIP,
 		serviceLabel: serviceLabel,
@@ -43,9 +43,9 @@ func New(endpoint string, hostIP, serviceLabel string, stopOnClose bool) (*Docke
 	}, nil
 }
 
-// Docker implements a Beacon runtime for the Docker daemon.
-type Docker struct {
-	client       *docker.Client
+// docker implements a Beacon runtime for the Docker daemon.
+type docker struct {
+	client       *dockerclient.Client
 	hostIP       string
 	serviceLabel string
 	stopOnClose  bool
@@ -54,8 +54,8 @@ type Docker struct {
 }
 
 // EmitEvents sends Docker events to Beacon.
-func (d *Docker) EmitEvents() (<-chan *beacon.Event, error) {
-	dockerEvents := make(chan *docker.APIEvents, 1)
+func (d *docker) EmitEvents() (<-chan *beacon.Event, error) {
+	dockerEvents := make(chan *dockerclient.APIEvents, 1)
 	if err := d.client.AddEventListener(dockerEvents); err != nil {
 		return nil, errors.Wrap(err, "failed to listen for docker events")
 	}
@@ -152,8 +152,8 @@ func (d *Docker) EmitEvents() (<-chan *beacon.Event, error) {
 	return beaconEvents, nil
 }
 
-func (d *Docker) listContainers() ([]*beacon.Container, error) {
-	opts := docker.ListContainersOptions{
+func (d *docker) listContainers() ([]*beacon.Container, error) {
+	opts := dockerclient.ListContainersOptions{
 		Filters: map[string][]string{
 			"status": {"running"},
 		},
@@ -176,7 +176,7 @@ func (d *Docker) listContainers() ([]*beacon.Container, error) {
 	return containers, nil
 }
 
-func (d *Docker) inspectContainer(id string) (*beacon.Container, error) {
+func (d *docker) inspectContainer(id string) (*beacon.Container, error) {
 	dockerContainer, err := d.client.InspectContainer(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to inspect container %s", id)
@@ -220,7 +220,7 @@ func (d *Docker) inspectContainer(id string) (*beacon.Container, error) {
 }
 
 // Close the connection to Docker and stop emiting events.
-func (d *Docker) Close() error {
+func (d *docker) Close() error {
 	close(d.stop)
 	d.wg.Wait()
 	return nil
