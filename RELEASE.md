@@ -1,3 +1,9 @@
+## v3.0.0
+* Refactor into multiple packages.
+* Support multiple simultaneous backends.
+- Temporarily remove etcd support.
++ Add AWS SNS support.
+
 ## v2.1.4
 - Remove -a flag for build.
 
