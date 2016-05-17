@@ -30,3 +30,12 @@ func (b *Binding) Equal(c *Binding) bool {
 	}
 	return b.HostIP == c.HostIP && b.HostPort == c.HostPort && b.ContainerPort == c.ContainerPort && b.Protocol == c.Protocol
 }
+
+// Copy allocates a copy of the Binding.
+func (b *Binding) Copy() *Binding {
+	if b == nil {
+		return nil
+	}
+	cp := *b
+	return &cp
+}

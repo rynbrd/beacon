@@ -18,3 +18,14 @@ type Event struct {
 	// The container affected by this event.
 	Container *Container
 }
+
+// Copy allocates a copy of the Event.
+func (e *Event) Copy() *Event {
+	if e == nil {
+		return nil
+	}
+	return &Event{
+		Action:    e.Action,
+		Container: e.Container.Copy(),
+	}
+}

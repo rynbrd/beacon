@@ -2,6 +2,7 @@ package beacon_test
 
 import (
 	beacon "."
+	"reflect"
 	"testing"
 )
 
@@ -94,5 +95,24 @@ func TestBindingEqual(t *testing.T) {
 		if test.A.Equal(test.B) != test.Equal {
 			t.Errorf("binding %d inequal", n)
 		}
+	}
+}
+
+func TestBindingCopy(t *testing.T) {
+	binding := &beacon.Binding{
+		HostPort:      56291,
+		ContainerPort: 80,
+		Protocol:      beacon.TCP,
+	}
+	newBinding := binding.Copy()
+
+	if !reflect.DeepEqual(binding, newBinding) {
+		t.Errorf("binding copy differs from original: %+v != %+v", binding, newBinding)
+	}
+
+	newPort := 54293
+	binding.HostPort = newPort
+	if newBinding.HostPort == newPort {
+		t.Error("binding copy points to same memory space")
 	}
 }

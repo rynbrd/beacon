@@ -99,7 +99,7 @@ func (b *beacon) handle(event *Event) error {
 		oldContainer, exists := b.containers[event.Container.ID]
 		if !exists {
 			// container does not exist and needs to be started
-			newContainer := CopyContainer(event.Container)
+			newContainer := event.Container.Copy()
 			b.containers[event.Container.ID] = newContainer
 			backendEvent = &Event{
 				Action:    Start,
@@ -107,7 +107,7 @@ func (b *beacon) handle(event *Event) error {
 			}
 		} else if !event.Container.Equal(oldContainer) {
 			// container exists and needs to be updated
-			newContainer := CopyContainer(event.Container)
+			newContainer := event.Container.Copy()
 			b.containers[event.Container.ID] = newContainer
 			backendEvent = &Event{
 				Action:    Update,
@@ -135,7 +135,7 @@ func (b *beacon) handle(event *Event) error {
 
 	for _, route := range b.routes {
 		if route.MatchContainer(backendEvent.Container) {
-			if err := route.ProcessEvent(CopyEvent(backendEvent)); err != nil {
+			if err := route.ProcessEvent(backendEvent.Copy()); err != nil {
 				Logger.Printf("discarding event %s for container %s: %s", event.Action, event.Container.ID, err)
 			}
 		}
@@ -154,7 +154,7 @@ func (b *beacon) Containers(filter Filter) []*Container {
 	containers := []*Container{}
 	for _, container := range b.containers {
 		if filter == nil || filter.MatchContainer(container) {
-			containers = append(containers, CopyContainer(container))
+			containers = append(containers, container.Copy())
 		}
 	}
 	return containers

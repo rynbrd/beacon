@@ -40,3 +40,24 @@ func (c *Container) Equal(b *Container) bool {
 	}
 	return true
 }
+
+// Copy allocates a copy of the Container.
+func (c *Container) Copy() *Container {
+	if c == nil {
+		return nil
+	}
+	newLabels := make(map[string]string, len(c.Labels))
+	for k, v := range c.Labels {
+		newLabels[k] = v
+	}
+	newBindings := make([]*Binding, len(c.Bindings))
+	for n, binding := range c.Bindings {
+		newBindings[n] = binding.Copy()
+	}
+	return &Container{
+		ID:       c.ID,
+		Service:  c.Service,
+		Labels:   newLabels,
+		Bindings: newBindings,
+	}
+}
