@@ -109,6 +109,8 @@ func (b *beacon) handle(event *Event) error {
 				Action:    event.Action,
 				Container: container,
 			}
+		} else {
+			return nil
 		}
 	case Update:
 		if container, ok := b.containers[event.Container.ID]; ok {

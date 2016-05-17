@@ -689,3 +689,134 @@ func TestBeaconContainers(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestBeaconRunOneStopTwice(t *testing.T) {
+	runtime := NewRuntime()
+	backend := NewBackend()
+	route := beacon.NewRoute(nil, backend)
+	bcn, err := beacon.New(runtime, []beacon.Route{route})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	runWait := &sync.WaitGroup{}
+	runWait.Add(1)
+	go func() {
+		defer runWait.Done()
+		if err := bcn.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	queueEvents := []*beacon.Event{
+		{
+			Action: beacon.Start,
+			Container: &beacon.Container{
+				ID:      "123456",
+				Service: "example",
+				Labels: map[string]string{
+					"a": "aye",
+				},
+				Bindings: []*beacon.Binding{
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56291,
+						ContainerPort: 80,
+						Protocol:      beacon.TCP,
+					},
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56292,
+						ContainerPort: 443,
+						Protocol:      beacon.TCP,
+					},
+				},
+			},
+		},
+		{
+			Action: beacon.Stop,
+			Container: &beacon.Container{
+				ID: "123456",
+			},
+		},
+		{
+			Action: beacon.Stop,
+			Container: &beacon.Container{
+				ID: "123456",
+			},
+		},
+	}
+	wantEvents := []*beacon.Event{
+		{
+			Action: beacon.Start,
+			Container: &beacon.Container{
+				ID:      "123456",
+				Service: "example",
+				Labels: map[string]string{
+					"a": "aye",
+				},
+				Bindings: []*beacon.Binding{
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56291,
+						ContainerPort: 80,
+						Protocol:      beacon.TCP,
+					},
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56292,
+						ContainerPort: 443,
+						Protocol:      beacon.TCP,
+					},
+				},
+			},
+		},
+		{
+			Action: beacon.Stop,
+			Container: &beacon.Container{
+				ID:      "123456",
+				Service: "example",
+				Labels: map[string]string{
+					"a": "aye",
+				},
+				Bindings: []*beacon.Binding{
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56291,
+						ContainerPort: 80,
+						Protocol:      beacon.TCP,
+					},
+					{
+						HostIP:        "127.0.0.1",
+						HostPort:      56292,
+						ContainerPort: 443,
+						Protocol:      beacon.TCP,
+					},
+				},
+			},
+		},
+	}
+
+	eventWait := &sync.WaitGroup{}
+	eventWait.Add(1)
+	go func() {
+		defer eventWait.Done()
+		for _, event := range queueEvents {
+			runtime.Events <- event
+		}
+	}()
+
+	haveEvents, err := backend.WaitForEvents(2, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EventArraysEqual(haveEvents, wantEvents); err != nil {
+		t.Fatal(err)
+	}
+	eventWait.Wait()
+
+	if err := bcn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	runWait.Wait()
+}
