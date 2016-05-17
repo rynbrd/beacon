@@ -35,6 +35,14 @@ func (c *Docker) Validate() error {
 	return nil
 }
 
+// Debug backend configuration.
+type Debug struct{}
+
+// Validate the Debug configuration
+func (c *Debug) Validate() error {
+	return nil
+}
+
 // SNS backend configuration.
 type SNS struct {
 	Region string
@@ -57,6 +65,7 @@ func (c *SNS) Validate() error {
 
 // Backend configuration object.
 type Backend struct {
+	Debug  *Debug
 	SNS    *SNS
 	Filter map[string]string
 }
@@ -65,6 +74,8 @@ type Backend struct {
 func (c *Backend) Validate() error {
 	if c.SNS != nil {
 		return c.SNS.Validate()
+	} else if c.Debug != nil {
+		return c.Debug.Validate()
 	}
 	return errors.New("backend not supported")
 }

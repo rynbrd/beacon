@@ -9,3 +9,4 @@ backends:
     topic: arn:aws:sns:us-east-1:698519295917:TestTopic
   filter:
     group: ops
+- debug: {}

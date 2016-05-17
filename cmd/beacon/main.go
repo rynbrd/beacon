@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/BlueDragonX/beacon/beacon"
+	"github.com/BlueDragonX/beacon/debug"
 	"github.com/BlueDragonX/beacon/docker"
 	"github.com/BlueDragonX/beacon/sns"
+	"github.com/pkg/errors"
 	"log"
 	"os"
 )
@@ -29,14 +31,19 @@ func NewBeacon(config *Config) (beacon.Beacon, error) {
 
 	routes := make([]beacon.Route, len(config.Backends))
 	for n, backendCfg := range config.Backends {
+		var backend beacon.Backend
+		filter := beacon.NewFilter(backendCfg.Filter)
 		if backendCfg.SNS != nil {
-			filter := beacon.NewFilter(backendCfg.Filter)
-			backend := sns.New(
+			backend = sns.New(
 				backendCfg.SNS.Region,
 				backendCfg.SNS.Topic,
 			)
-			routes[n] = beacon.NewRoute(filter, backend)
+		} else if backendCfg.Debug != nil {
+			backend = debug.New(Logger)
+		} else {
+			return nil, errors.New("unsupported backend")
 		}
+		routes[n] = beacon.NewRoute(filter, backend)
 	}
 	return beacon.New(docker, routes)
 }
@@ -50,7 +57,7 @@ func main() {
 
 	signals := notifyOnStop()
 
-	Logger.Print("starting")
+	Logger.Printf("listening for events on %s", config.Docker.Socket)
 	go func() {
 		<-signals
 		if err := bcn.Close(); err != nil {

@@ -1,7 +1,7 @@
 name=beacon
 version=$(shell git describe --tags --dirty)
 
-gopkgs=./cmd/beacon ./beacon ./docker ./sns
+gopkgs=./cmd/beacon ./beacon ./debug ./docker ./sns
 
 export GOBIN=$(shell pwd)/bin
 export GOPATH=$(shell pwd)/.go

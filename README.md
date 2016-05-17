@@ -47,9 +47,10 @@ A config file snippet for Docker:
 
 Backends
 --------
-Currently Beacon supports a single backend: SNS.
+Currently Beacon supports two backends: `sns` and `debug`.
 
-The SNS backend queues events to an AWS SNS topic. The SNS backend is configured with a region and topic ARN.
+### SNS
+The `sns` backend queues events to an AWS SNS topic. The SNS backend is configured with a region and topic ARN.
 
 A config file snippet for SNS:
 
@@ -81,6 +82,14 @@ The SNS message is a JSON encoded event. An example follows:
 			]
 		}
 	}
+
+### Debug
+The `debug` backend prints events to the log.
+
+A config file snippet for the debug:
+
+	backends:
+	- debug: {}
 
 License
 -------
