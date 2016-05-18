@@ -145,6 +145,7 @@ func EventArraysEqual(a []*beacon.Event, b []*beacon.Event) error {
 
 // Test that beacon.New raises an error when provided invalid inputs.
 func TestBeaconNewError(t *testing.T) {
+	t.Parallel()
 	if _, err := beacon.New(nil, []beacon.Route{}); err == nil {
 		t.Error("expected error for empty arguments")
 	}
@@ -161,6 +162,7 @@ func TestBeaconNewError(t *testing.T) {
 }
 
 func TestBeaconRunOneBackend(t *testing.T) {
+	t.Parallel()
 	runtime := NewRuntime()
 	backend := NewBackend()
 	route := beacon.NewRoute(nil, backend)
@@ -335,6 +337,7 @@ func TestBeaconRunOneBackend(t *testing.T) {
 }
 
 func TestBeaconRunTwoBackends(t *testing.T) {
+	t.Parallel()
 	runtime := NewRuntime()
 	backend1 := NewBackend()
 	backend2 := NewBackend()
@@ -522,6 +525,7 @@ func TestBeaconRunTwoBackends(t *testing.T) {
 }
 
 func TestBeaconRunFilterBackends(t *testing.T) {
+	t.Parallel()
 	runtime := NewRuntime()
 	backend1 := NewBackend()
 	backend2 := NewBackend()
@@ -626,6 +630,7 @@ func TestBeaconRunFilterBackends(t *testing.T) {
 }
 
 func TestBeaconContainers(t *testing.T) {
+	t.Parallel()
 	runtime := NewRuntime()
 	backend := NewBackend()
 	routes := []beacon.Route{
@@ -721,6 +726,7 @@ func TestBeaconContainers(t *testing.T) {
 }
 
 func TestBeaconRunOneStopTwice(t *testing.T) {
+	t.Parallel()
 	runtime := NewRuntime()
 	backend := NewBackend()
 	route := beacon.NewRoute(nil, backend)

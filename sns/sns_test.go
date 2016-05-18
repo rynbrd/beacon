@@ -168,6 +168,7 @@ func testEvents(t *testing.T, events []*beacon.Event) {
 }
 
 func TestOneEvent(t *testing.T) {
+	t.Parallel()
 	testEvents(t, []*beacon.Event{
 		{
 			Action: beacon.Start,
@@ -187,6 +188,7 @@ func TestOneEvent(t *testing.T) {
 }
 
 func TestTwoEvents(t *testing.T) {
+	t.Parallel()
 	testEvents(t, []*beacon.Event{
 		{
 			Action: beacon.Start,

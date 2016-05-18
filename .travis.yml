@@ -13,4 +13,4 @@ env:
 before_install:
 - go get -u github.com/golang/lint/golint
 
-script: make test && make
+script: make -j2 test && make

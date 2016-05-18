@@ -168,6 +168,7 @@ func EventArraysEqual(a []*beacon.Event, b []*beacon.Event, ignoreID, ignoreHost
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	daemon, err := dockertest.New()
 	if err != nil {
 		t.Fatal(err)
@@ -184,6 +185,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestOneContainer(t *testing.T) {
+	t.Parallel()
 	daemon, err := DockerSetup()
 	if err != nil {
 		t.Fatal(err)
@@ -265,6 +267,7 @@ func TestOneContainer(t *testing.T) {
 }
 
 func TestTwoContainers(t *testing.T) {
+	t.Parallel()
 	daemon, err := DockerSetup()
 	if err != nil {
 		t.Fatal(err)
@@ -356,6 +359,7 @@ func TestTwoContainers(t *testing.T) {
 }
 
 func TestRunIgnoredContainers(t *testing.T) {
+	t.Parallel()
 	daemon, err := DockerSetup()
 	if err != nil {
 		t.Fatal(err)
@@ -450,6 +454,7 @@ func TestRunIgnoredContainers(t *testing.T) {
 }
 
 func TestExistingContainer(t *testing.T) {
+	t.Parallel()
 	daemon, err := DockerSetup()
 	if err != nil {
 		t.Fatal(err)
@@ -537,6 +542,7 @@ func TestExistingContainer(t *testing.T) {
 }
 
 func TestStopOnClose(t *testing.T) {
+	t.Parallel()
 	daemon, err := DockerSetup()
 	if err != nil {
 		t.Fatal(err)
