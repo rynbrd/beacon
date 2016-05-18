@@ -58,7 +58,6 @@ func main() {
 
 	signals := notifyOnStop()
 
-	Logger.Printf("listening for events on %s", config.Docker.Socket)
 	go func() {
 		<-signals
 		if err := bcn.Close(); err != nil {

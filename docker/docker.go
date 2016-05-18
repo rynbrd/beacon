@@ -34,6 +34,7 @@ func New(endpoint string, hostIP, serviceLabel string, stopOnClose bool) (beacon
 	}
 
 	return &docker{
+		endpoint:     endpoint,
 		client:       client,
 		hostIP:       hostIP,
 		serviceLabel: serviceLabel,
@@ -45,6 +46,7 @@ func New(endpoint string, hostIP, serviceLabel string, stopOnClose bool) (beacon
 
 // docker implements a Beacon runtime for the Docker daemon.
 type docker struct {
+	endpoint     string
 	client       *dockerclient.Client
 	hostIP       string
 	serviceLabel string
@@ -149,6 +151,8 @@ func (d *docker) EmitEvents() (<-chan *beacon.Event, error) {
 			}
 		}
 	}()
+
+	Logger.Printf("listening for docker events on %s", d.endpoint)
 	return beaconEvents, nil
 }
 
