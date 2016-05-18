@@ -68,5 +68,4 @@ func main() {
 	if err := bcn.Run(); err != nil {
 		Logger.Fatalf("failed to shut down: %s", err)
 	}
-	Logger.Print("stopped")
 }
