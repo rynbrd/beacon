@@ -11,6 +11,6 @@ env:
 - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 
 before_install:
-- go get -u github.com/golang/lint/golint
+- go get -u golang.org/x/lint/golint
 
 script: make test && make
